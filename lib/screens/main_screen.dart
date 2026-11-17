@@ -1,3 +1,5 @@
+import 'package:flutter/services.dart';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
@@ -36,9 +38,22 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final BlockchainService _blockchain = BlockchainService();
+  final List<StreamSubscription<dynamic>> _eventSubscriptions = [];
 
   bool _loading = false;
+  bool _refreshInProgress = false;
+  bool _transactionInProgress = false;
+
   String? _loadError;
+
+  List<LoanModel> _loans = [];
+  List<String> _activities = [];
+
+  bool get _demoMode => !BlockchainConfig.isRpcConfigured;
+
+  // ============================================================
+  // DEMO DATA
+  // ============================================================
 
   final List<LoanModel> _demoLoans = [
     LoanModel(
@@ -63,29 +78,84 @@ class _MainScreenState extends State<MainScreen> {
     ),
   ];
 
-  final List<String> _activities = [
+  final List<String> _demoActivities = [
     'Sensor DHT11 telah dikembalikan (data demo)',
     'Arduino Uno telah dipinjam (data demo)',
   ];
 
-  List<LoanModel> _loans = [];
-
-  bool get _demoMode => !BlockchainConfig.isRpcConfigured;
+  // ============================================================
+  // INIT
+  // ============================================================
 
   @override
   void initState() {
     super.initState();
 
     _loans = List.of(_demoLoans);
+<<<<<<< HEAD
     _initializeBlockchain();
+=======
+    _activities = List.of(_demoActivities);
+
+if (!_demoMode) {
+  _initializeBlockchainAndListen();
+}
   }
 
-  @override
-  void dispose() {
-    _blockchain.dispose();
-    super.dispose();
+
+Future<void> _initializeBlockchainAndListen() async {
+  try {
+    await _blockchain.initialize();
+
+    await _startEventListeners();
+
+    await _refreshBlockchainData();
+  } catch (e) {
+    debugPrint('Blockchain initialization error: $e');
+  }
+}
+
+Future<void> _startEventListeners() async {
+  const eventNames = [
+    'AlatDipinjam',
+    'AlatDikembalikan',
+    'PeminjamanDibatalkan',
+  ];
+
+  for (final eventName in eventNames) {
+    try {
+      final stream = await _blockchain.watchEvent(eventName);
+
+      final subscription = stream.listen(
+        (event) {
+          debugPrint('Event blockchain diterima: $eventName');
+
+          if (!mounted) return;
+
+          // Muat ulang data setelah event diterima.
+          unawaited(_refreshBlockchainData());
+        },
+        onError: (error) {
+          debugPrint('Event $eventName error: $error');
+        },
+      );
+
+      _eventSubscriptions.add(subscription);
+    } catch (e) {
+      debugPrint('Gagal mendengarkan $eventName: $e');
+    }
+>>>>>>> 653bfee (Update fiturn)
+  }
+}
+
+
+@override
+void dispose() {
+  for (final subscription in _eventSubscriptions) {
+    unawaited(subscription.cancel());
   }
 
+<<<<<<< HEAD
   // INITIALISASI BLOCKCHAIN DAN WALLET
   Future<void> _initializeBlockchain() async {
     try {
@@ -116,33 +186,66 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   // REFRESH DATA BLOCKCHAIN
-  Future<void> _refreshBlockchainData() async {
-    if (_demoMode || _loading) return;
+=======
+  unawaited(_blockchain.dispose());
 
-    setState(() {
-      _loading = true;
-      _loadError = null;
-    });
+  super.dispose();
+}
+
+  // ============================================================
+  // REFRESH DATA
+  // ============================================================
+
+>>>>>>> 653bfee (Update fiturn)
+  Future<void> _refreshBlockchainData() async {
+    if (_demoMode || _refreshInProgress) return;
+
+    _refreshInProgress = true;
+
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _loadError = null;
+      });
+    }
 
     try {
-      final result = await _blockchain.getAllLogs();
+      final loans = await _blockchain.getAllLogs();
 
       if (!mounted) return;
 
       setState(() {
-        _loans = result;
-        _loading = false;
+        _loans = loans;
       });
-    } catch (error) {
+
+      final activities = await _blockchain.getActivityHistory();
+
       if (!mounted) return;
 
       setState(() {
-        _loading = false;
-        _loadError = error.toString();
+        _activities = activities;
+        _loadError = null;
       });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _loadError = 'Gagal membaca blockchain: $e';
+      });
+
+      _showMessage('Gagal membaca blockchain: $e');
+    } finally {
+      _refreshInProgress = false;
+
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
+<<<<<<< HEAD
   // REFRESH WALLET BALANCE
   Future<void> _refreshWalletBalance() async {
     if (!_blockchain.isWalletConnected || _demoMode) return;
@@ -179,39 +282,132 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   // SNACKBAR
+=======
+  // ============================================================
+  // MESSAGE
+  // ============================================================
+
+>>>>>>> 653bfee (Update fiturn)
   void _showMessage(String message) {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
-  void _setLoading(bool value) {
+  // ============================================================
+  // WALLET OWNER
+  // ============================================================
+
+  bool _isCurrentWalletOwner(LoanModel loan) {
+    final address = _blockchain.walletAddress;
+
+    if (address == null) return false;
+
+    return address.toLowerCase() == loan.walletPeminjam.toLowerCase();
+  }
+
+  // ============================================================
+  // REFRESH AFTER TRANSACTION
+  // ============================================================
+
+  Future<void> _afterTransaction({
+    required String action,
+    required String hash,
+  }) async {
     if (!mounted) return;
 
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 20),
+        behavior: SnackBarBehavior.floating,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$action berhasil dikonfirmasi!',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Transaction Hash:',
+              style: TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 4),
+            SelectableText(
+              hash,
+              style: const TextStyle(
+                fontSize: 11,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ],
+        ),
+        action: SnackBarAction(
+          label: 'SALIN HASH',
+          onPressed: () {
+            Clipboard.setData(
+              ClipboardData(text: hash),
+            );
+          },
+        ),
+      ),
+    );
+
+// Refresh data blockchain setelah transaksi berhasil.
+    unawaited(_refreshBlockchainData());
+  }
+
+  // ============================================================
+  // TRANSACTION GUARD
+  // ============================================================
+
+  bool _canStartTransaction() {
+    if (_transactionInProgress) {
+      _showMessage(
+        'Tunggu transaksi sebelumnya selesai.',
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  void _startTransaction() {
     setState(() {
-      _loading = value;
+      _transactionInProgress = true;
+      _loading = true;
     });
   }
 
-  void _showTransactionHash(String action, String hash) {
-    _showMessage(
-      '$action berhasil dikirim. Hash: $hash',
-    );
+  void _finishTransaction() {
+    if (!mounted) return;
+
+    setState(() {
+      _transactionInProgress = false;
+      _loading = _refreshInProgress;
+    });
   }
 
+<<<<<<< HEAD
   // VALIDASI PEMILIK WALLET
   bool _isCurrentWalletOwner(LoanModel loan) {
     final connectedAddress = _blockchain.walletAddress;
+=======
+  // ============================================================
+  // ADD LOAN
+  // ============================================================
+>>>>>>> 653bfee (Update fiturn)
 
-    if (connectedAddress == null) return false;
-
-    return connectedAddress.toLowerCase() ==
-        loan.walletPeminjam.toLowerCase();
-  }
-
-  // PEMINJAMAN
   Future<void> _addLoan(
     String namaAlat,
     String namaPeminjam,
@@ -228,8 +424,7 @@ class _MainScreenState extends State<MainScreen> {
             id: nextId,
             namaAlat: namaAlat,
             namaPeminjam: namaPeminjam,
-            waktuPinjam:
-                DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            waktuPinjam: DateTime.now().millisecondsSinceEpoch ~/ 1000,
             waktuKembali: 0,
             statusKembali: false,
             dibatalkan: false,
@@ -239,21 +434,28 @@ class _MainScreenState extends State<MainScreen> {
 
         _activities.insert(
           0,
-          '$namaAlat dipinjam oleh $namaPeminjam (demo)',
+          '$namaPeminjam meminjam $namaAlat (demo)',
         );
       });
 
+      _showMessage('Peminjaman berhasil (mode demo).');
       return;
     }
 
     if (!_blockchain.isWalletConnected) {
+<<<<<<< HEAD
       _showMessage('Wallet belum tersedia. Periksa konfigurasi .env.');
+=======
+      _showMessage(
+        'Hubungkan wallet terlebih dahulu melalui Settings.',
+      );
+>>>>>>> 653bfee (Update fiturn)
       return;
     }
 
-    if (_loading) return;
+    if (!_canStartTransaction()) return;
 
-    _setLoading(true);
+    _startTransaction();
 
     try {
       final hash = await _blockchain.pinjamAlat(
@@ -261,21 +463,34 @@ class _MainScreenState extends State<MainScreen> {
         namaPeminjam,
       );
 
-      _showTransactionHash('Peminjaman', hash);
-    } catch (error) {
-      _showMessage('Gagal mengirim transaksi peminjaman: $error');
+      await _afterTransaction(
+        action: 'Peminjaman',
+        hash: hash,
+      );
+    } on TimeoutException catch (e) {
+      _showMessage(
+        'Transaksi masih menunggu konfirmasi. '
+        '${e.message ?? ""}',
+      );
+    } catch (e) {
+      _showMessage('Transaksi peminjaman gagal: $e');
     } finally {
-      _setLoading(false);
+      _finishTransaction();
     }
   }
 
-  // PENGEMBALIAN
+  // ============================================================
+  // RETURN LOAN
+  // ============================================================
+
   Future<void> _returnLoan(int id) async {
     if (_demoMode) {
       final index = _loans.indexWhere((e) => e.id == id);
+
       if (index == -1) return;
 
       final loan = _loans[index];
+
       if (!loan.sedangDipinjam) return;
 
       setState(() {
@@ -284,8 +499,7 @@ class _MainScreenState extends State<MainScreen> {
           namaAlat: loan.namaAlat,
           namaPeminjam: loan.namaPeminjam,
           waktuPinjam: loan.waktuPinjam,
-          waktuKembali:
-              DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          waktuKembali: DateTime.now().millisecondsSinceEpoch ~/ 1000,
           statusKembali: true,
           dibatalkan: false,
           walletPeminjam: loan.walletPeminjam,
@@ -293,6 +507,7 @@ class _MainScreenState extends State<MainScreen> {
 
         _activities.insert(
           0,
+<<<<<<< HEAD
           '${loan.namaAlat} dikembalikan (demo)',
         );
       });
@@ -355,6 +570,9 @@ class _MainScreenState extends State<MainScreen> {
         _activities.insert(
           0,
           'Peminjaman ${loan.namaAlat} dibatalkan (demo)',
+=======
+          '${loan.namaPeminjam} mengembalikan ${loan.namaAlat} (demo)',
+>>>>>>> 653bfee (Update fiturn)
         );
       });
 
@@ -381,26 +599,133 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     if (!_isCurrentWalletOwner(loan)) {
-      _showMessage('Wallet ini bukan pemilik peminjaman tersebut.');
+      _showMessage(
+        'Wallet ini bukan pemilik peminjaman tersebut.',
+      );
       return;
     }
 
-    if (_loading) return;
+    if (!_canStartTransaction()) return;
 
-    _setLoading(true);
+    _startTransaction();
 
     try {
-      final hash = await _blockchain.batalkanPeminjaman(id);
-      _showTransactionHash('Pembatalan', hash);
-    } catch (error) {
-      _showMessage('Gagal mengirim transaksi pembatalan: $error');
+      final hash = await _blockchain.kembalikanAlat(id);
+
+      await _afterTransaction(
+        action: 'Pengembalian',
+        hash: hash,
+      );
+    } on TimeoutException catch (e) {
+      _showMessage(
+        'Transaksi masih menunggu konfirmasi. ${e.message ?? ""}',
+      );
+    } catch (e) {
+      _showMessage('Transaksi pengembalian gagal: $e');
     } finally {
-      _setLoading(false);
+      _finishTransaction();
     }
   }
 
+<<<<<<< HEAD
   // DIALOG PEMINJAMAN
+=======
+  // ============================================================
+  // CANCEL LOAN
+  // ============================================================
+
+  Future<void> _cancelLoan(int id) async {
+    if (_demoMode) {
+      final index = _loans.indexWhere((e) => e.id == id);
+
+      if (index == -1) return;
+
+      final loan = _loans[index];
+
+      if (!loan.sedangDipinjam) return;
+
+      setState(() {
+        _loans[index] = LoanModel(
+          id: loan.id,
+          namaAlat: loan.namaAlat,
+          namaPeminjam: loan.namaPeminjam,
+          waktuPinjam: loan.waktuPinjam,
+          waktuKembali: loan.waktuKembali,
+          statusKembali: false,
+          dibatalkan: true,
+          walletPeminjam: loan.walletPeminjam,
+        );
+
+        _activities.insert(
+          0,
+          '${loan.namaPeminjam} membatalkan peminjaman ${loan.namaAlat} (demo)',
+        );
+      });
+
+      return;
+    }
+
+    if (!_blockchain.isWalletConnected) {
+      _showMessage('Hubungkan wallet terlebih dahulu.');
+      return;
+    }
+
+    final index = _loans.indexWhere((e) => e.id == id);
+
+    if (index == -1) {
+      _showMessage('Data peminjaman tidak ditemukan.');
+      return;
+    }
+
+    final loan = _loans[index];
+
+    if (!loan.sedangDipinjam) {
+      _showMessage('Peminjaman sudah tidak aktif.');
+      return;
+    }
+
+    if (!_isCurrentWalletOwner(loan)) {
+      _showMessage(
+        'Wallet ini bukan pemilik peminjaman tersebut.',
+      );
+      return;
+    }
+
+    if (!_canStartTransaction()) return;
+
+    _startTransaction();
+
+    try {
+      final hash = await _blockchain.batalkanPeminjaman(id);
+
+      await _afterTransaction(
+        action: 'Pembatalan',
+        hash: hash,
+      );
+    } on TimeoutException catch (e) {
+      _showMessage(
+        'Transaksi masih menunggu konfirmasi. ${e.message ?? ""}',
+      );
+    } catch (e) {
+      _showMessage('Transaksi pembatalan gagal: $e');
+    } finally {
+      _finishTransaction();
+    }
+  }
+
+  // ============================================================
+  // BORROW DIALOG
+  // ============================================================
+
+>>>>>>> 653bfee (Update fiturn)
   void _showBorrowDialog() {
+    if (_transactionInProgress) {
+      _showMessage(
+        'Tunggu transaksi sebelumnya selesai.',
+      );
+      return;
+    }
+
     showDialog<void>(
       context: context,
       builder: (_) => BorrowDialog(
@@ -408,6 +733,10 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -417,7 +746,11 @@ class _MainScreenState extends State<MainScreen> {
         onBorrow: _showBorrowDialog,
         onReturn: _returnLoan,
         onCancel: _cancelLoan,
-        onOpenLoans: () => setState(() => _selectedIndex = 1),
+        onOpenLoans: () {
+          setState(() {
+            _selectedIndex = 1;
+          });
+        },
         isLoading: _loading,
         loadError: _loadError,
         isDemoMode: _demoMode,
@@ -429,10 +762,17 @@ class _MainScreenState extends State<MainScreen> {
         onReturn: _returnLoan,
         onCancel: _cancelLoan,
         isDemoMode: _demoMode,
+        currentWalletAddress: _blockchain.walletAddress,
       ),
       ActivityScreen(
         activities: _activities,
       ),
+<<<<<<< HEAD
+      ActivityScreen(
+        activities: _activities,
+      ),
+=======
+>>>>>>> 653bfee (Update fiturn)
       SettingsScreen(
         themeMode: widget.themeMode,
         onToggleTheme: widget.onToggleTheme,

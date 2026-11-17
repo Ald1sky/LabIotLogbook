@@ -1,3 +1,4 @@
+import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -19,14 +20,25 @@ class BlockchainService {
 
   bool get isWalletConnected => _credentials != null;
 
+<<<<<<< HEAD
   // INISIALISASI RPC DAN SMART CONTRACT
   Future<void> initialize() async {
     if (!BlockchainConfig.isRpcConfigured) {
       throw StateError('RPC Sepolia belum dikonfigurasi.');
     }
+=======
+  // ============================================================
+  // INITIALIZE
+  // ============================================================
+>>>>>>> 653bfee (Update fiturn)
 
+  Future<void> initialize() async {
     if (_client != null && _contract != null) {
       return;
+    }
+
+    if (!BlockchainConfig.isRpcConfigured) {
+      throw StateError('RPC Sepolia belum dikonfigurasi.');
     }
 
     final client = Web3Client(
@@ -53,15 +65,67 @@ class BlockchainService {
 
       _client = client;
       _contract = contract;
+<<<<<<< HEAD
     } catch (_) {
+=======
+    } catch (e) {
+>>>>>>> 653bfee (Update fiturn)
       client.dispose();
       rethrow;
     }
   }
 
+<<<<<<< HEAD
   // INISIALISASI WALLET DARI .ENV
   Future<void> initializeWallet() async {
     if (isWalletConnected) return;
+=======
+  // ============================================================
+  // RPC RETRY
+  // ============================================================
+
+  Future<T> _withRpcRetry<T>(
+    Future<T> Function() request,
+  ) async {
+    const retryDelays = [
+      1,
+      2,
+      4,
+      8,
+      15,
+    ];
+
+    for (int attempt = 0; attempt <= retryDelays.length; attempt++) {
+      try {
+        return await request();
+      } catch (e) {
+        final message = e.toString().toLowerCase();
+
+        final isRateLimit = message.contains('429') ||
+            message.contains('compute units') ||
+            message.contains('too many requests') ||
+            message.contains('rate limit');
+
+        if (!isRateLimit || attempt == retryDelays.length) {
+          rethrow;
+        }
+
+        await Future.delayed(
+          Duration(seconds: retryDelays[attempt]),
+        );
+      }
+    }
+
+    throw Exception('Permintaan RPC gagal.');
+  }
+
+  // ============================================================
+  // WALLET
+  // ============================================================
+
+  Future<String> connectWallet(String privateKey) async {
+    await initialize();
+>>>>>>> 653bfee (Update fiturn)
 
     final privateKey = dotenv.env['PRIVATE_KEY']?.trim();
 
@@ -101,7 +165,15 @@ class BlockchainService {
     return _walletAddress!;
   }
 
+<<<<<<< HEAD
   // MENGAMBIL SALDO WALLET
+=======
+  void disconnectWallet() {
+    _credentials = null;
+    _walletAddress = null;
+  }
+
+>>>>>>> 653bfee (Update fiturn)
   Future<EtherAmount> getWalletBalance() async {
     await initialize();
 
@@ -109,12 +181,21 @@ class BlockchainService {
       throw StateError('Wallet belum terhubung.');
     }
 
-    return _client!.getBalance(
-      _credentials!.address,
+    return _withRpcRetry(
+      () => _client!.getBalance(
+        _credentials!.address,
+      ),
     );
   }
 
+<<<<<<< HEAD
   // MENGIRIM TRANSAKSI SMART CONTRACT
+=======
+  // ============================================================
+  // SEND TRANSACTION
+  // ============================================================
+
+>>>>>>> 653bfee (Update fiturn)
   Future<String> _sendContractTransaction(
     String functionName,
     List<dynamic> params,
@@ -133,22 +214,63 @@ class BlockchainService {
       maxGas: 600000,
     );
 
-    return _client!.sendTransaction(
+    final hash = await _client!.sendTransaction(
       _credentials!,
       transaction,
       chainId: BlockchainConfig.chainId,
     );
+
+    // Tunggu konfirmasi transaksi.
+    const maxAttempts = 60;
+
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+      final receipt = await _withRpcRetry(
+        () => _client!.getTransactionReceipt(hash),
+      );
+
+      if (receipt != null) {
+        if (receipt.status == true) {
+          return hash;
+        }
+
+        if (receipt.status == false) {
+          throw StateError(
+            'Transaksi gagal dieksekusi oleh smart contract. '
+            'Hash: $hash',
+          );
+        }
+
+        throw StateError(
+          'Status receipt transaksi tidak tersedia. Hash: $hash',
+        );
+      }
+
+      await Future.delayed(
+        const Duration(seconds: 2),
+      );
+    }
+
+    throw TimeoutException(
+      'Transaksi masih menunggu konfirmasi. '
+      'Periksa Etherscan. Hash: $hash',
+    );
   }
 
+<<<<<<< HEAD
   // TRANSAKSI: MEMINJAM ALAT
+=======
+  // ============================================================
+  // PINJAM ALAT
+  // ============================================================
+
+>>>>>>> 653bfee (Update fiturn)
   Future<String> pinjamAlat(
     String namaAlat,
     String namaPeminjam,
   ) async {
-    if (namaAlat.trim().isEmpty ||
-        namaPeminjam.trim().isEmpty) {
+    if (namaAlat.trim().isEmpty || namaPeminjam.trim().isEmpty) {
       throw ArgumentError(
-        'Nama alat dan kode peminjam wajib diisi.',
+        'Nama alat dan nama peminjam wajib diisi.',
       );
     }
 
@@ -161,7 +283,14 @@ class BlockchainService {
     );
   }
 
+<<<<<<< HEAD
   // TRANSAKSI: MENGEMBALIKAN ALAT
+=======
+  // ============================================================
+  // KEMBALIKAN ALAT
+  // ============================================================
+
+>>>>>>> 653bfee (Update fiturn)
   Future<String> kembalikanAlat(int id) async {
     if (id < 0) {
       throw ArgumentError('ID peminjaman tidak valid.');
@@ -173,7 +302,14 @@ class BlockchainService {
     );
   }
 
+<<<<<<< HEAD
   // TRANSAKSI: MEMBATALKAN PEMINJAMAN
+=======
+  // ============================================================
+  // BATALKAN PEMINJAMAN
+  // ============================================================
+
+>>>>>>> 653bfee (Update fiturn)
   Future<String> batalkanPeminjaman(int id) async {
     if (id < 0) {
       throw ArgumentError('ID peminjaman tidak valid.');
@@ -185,19 +321,29 @@ class BlockchainService {
     );
   }
 
+<<<<<<< HEAD
   // READ: MENGAMBIL JUMLAH SELURUH LOG
+=======
+  // ============================================================
+  // READ: JUMLAH LOG
+  // ============================================================
+
+>>>>>>> 653bfee (Update fiturn)
   Future<int> getJumlahLog() async {
     await initialize();
 
-    final result = await _client!.call(
-      contract: _contract!,
-      function: _contract!.function('jumlahLog'),
-      params: [],
+    final result = await _withRpcRetry(
+      () => _client!.call(
+        contract: _contract!,
+        function: _contract!.function('jumlahLog'),
+        params: [],
+      ),
     );
 
     return (result.first as BigInt).toInt();
   }
 
+<<<<<<< HEAD
   // READ: MENGAMBIL DETAIL LOG
   Future<LoanModel> getLog(int id) async {
     await initialize();
@@ -206,6 +352,27 @@ class BlockchainService {
       contract: _contract!,
       function: _contract!.function('ambilLog'),
       params: [BigInt.from(id)],
+=======
+  // ============================================================
+  // READ: SATU LOG
+  // ============================================================
+
+  Future<LoanModel> getLog(int id) async {
+    await initialize();
+
+    if (id < 0) {
+      throw ArgumentError('ID peminjaman tidak valid.');
+    }
+
+    final result = await _withRpcRetry(
+      () => _client!.call(
+        contract: _contract!,
+        function: _contract!.function('ambilLog'),
+        params: [
+          BigInt.from(id),
+        ],
+      ),
+>>>>>>> 653bfee (Update fiturn)
     );
 
     return LoanModel(
@@ -223,27 +390,164 @@ class BlockchainService {
     );
   }
 
+<<<<<<< HEAD
   // READ: MENGAMBIL SELURUH DATA PEMINJAMAN
+=======
+  // ============================================================
+  // READ: SELURUH LOG
+  // ============================================================
+
+>>>>>>> 653bfee (Update fiturn)
   Future<List<LoanModel>> getAllLogs() async {
+    await initialize();
+
     final jumlah = await getJumlahLog();
 
     final List<LoanModel> logs = [];
 
     for (int id = 0; id < jumlah; id++) {
+<<<<<<< HEAD
       logs.add(await getLog(id));
+=======
+      final loan = await getLog(id);
+
+      logs.add(loan);
+
+      // Kurangi tekanan request ke RPC.
+      if (id < jumlah - 1) {
+        await Future.delayed(
+          const Duration(milliseconds: 150),
+        );
+      }
+>>>>>>> 653bfee (Update fiturn)
     }
 
     return logs.reversed.toList();
   }
 
+<<<<<<< HEAD
   // MENUTUP KONEKSI
   void dispose() {
     _credentials = null;
     _walletAddress = null;
+=======
+  // ============================================================
+// WATCH SMART CONTRACT EVENT
+// ============================================================
 
-    _client?.dispose();
+  Future<Stream<FilterEvent>> watchEvent(String eventName) async {
+    await initialize();
+
+    final event = _contract!.event(eventName);
+
+    return _client!.events(
+      FilterOptions.events(
+        contract: _contract!,
+        event: event,
+      ),
+    );
+  }
+
+  // ============================================================
+  // ACTIVITY HISTORY
+  // ============================================================
+
+  Future<List<String>> getActivityHistory() async {
+    await initialize();
+
+    // Ambil seluruh data langsung dari smart contract.
+    final loans = await getAllLogs();
+
+    final List<_ActivityItem> activities = [];
+
+    for (final loan in loans) {
+      // Aktivitas peminjaman.
+      activities.add(
+        _ActivityItem(
+          message: '${loan.namaPeminjam} meminjam ${loan.namaAlat}',
+          timestamp: loan.waktuPinjam,
+          id: loan.id,
+          order: 0,
+        ),
+      );
+
+      // Aktivitas pengembalian.
+      if (loan.statusKembali && loan.waktuKembali > 0) {
+        activities.add(
+          _ActivityItem(
+            message: '${loan.namaPeminjam} mengembalikan ${loan.namaAlat}',
+            timestamp: loan.waktuKembali,
+            id: loan.id,
+            order: 1,
+          ),
+        );
+      }
+
+      // Aktivitas pembatalan.
+      if (loan.dibatalkan) {
+        activities.add(
+          _ActivityItem(
+            message: '${loan.namaPeminjam} membatalkan peminjaman '
+                '${loan.namaAlat}',
+            // Smart contract lama tidak menyimpan waktu pembatalan.
+            // Waktu pinjam hanya digunakan sebagai perkiraan urutan.
+            timestamp: loan.waktuPinjam,
+            id: loan.id,
+            order: 1,
+          ),
+        );
+      }
+    }
+
+    // Urutkan aktivitas dari terbaru ke terlama.
+    activities.sort((a, b) {
+      final timeCompare = b.timestamp.compareTo(a.timestamp);
+
+      if (timeCompare != 0) {
+        return timeCompare;
+      }
+
+      final idCompare = b.id.compareTo(a.id);
+
+      if (idCompare != 0) {
+        return idCompare;
+      }
+
+      return b.order.compareTo(a.order);
+    });
+
+    return activities.map((activity) => activity.message).toList();
+  }
+
+  // ============================================================
+  // DISPOSE
+  // ============================================================
+
+  Future<void> dispose() async {
+    disconnectWallet();
+>>>>>>> 653bfee (Update fiturn)
+
+    await _client?.dispose();
 
     _client = null;
     _contract = null;
   }
+}
+
+// ============================================================
+// ACTIVITY MODEL
+// ============================================================
+
+class _ActivityItem {
+  final String message;
+  final int timestamp;
+  final int id;
+  final int order;
+
+  const _ActivityItem({
+    required this.message,
+    required this.timestamp,
+    required this.id,
+    required this.order,
+  });
 }
