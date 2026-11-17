@@ -27,7 +27,14 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  bool _walletInitializing = true;
+  String? _walletError;
+  String? _walletBalance;
+  bool _balanceLoading = false;
+  String? _balanceError;
+
   int _selectedIndex = 0;
+
   final BlockchainService _blockchain = BlockchainService();
 
   bool _loading = false;
@@ -68,11 +75,9 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    _loans = List.of(_demoLoans);
 
-    if (!_demoMode) {
-      _refreshBlockchainData();
-    }
+    _loans = List.of(_demoLoans);
+    _initializeBlockchain();
   }
 
   @override
@@ -81,6 +86,36 @@ class _MainScreenState extends State<MainScreen> {
     super.dispose();
   }
 
+  // INITIALISASI BLOCKCHAIN DAN WALLET
+  Future<void> _initializeBlockchain() async {
+    try {
+      await _blockchain.initializeWallet();
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _walletError = error.toString();
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _walletInitializing = false;
+        });
+      }
+    }
+
+    if (!mounted) return;
+
+    if (_blockchain.isWalletConnected && !_demoMode) {
+      await _refreshWalletBalance();
+    }
+
+    if (!_demoMode && mounted) {
+      await _refreshBlockchainData();
+    }
+  }
+
+  // REFRESH DATA BLOCKCHAIN
   Future<void> _refreshBlockchainData() async {
     if (_demoMode || _loading) return;
 
@@ -108,6 +143,42 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  // REFRESH WALLET BALANCE
+  Future<void> _refreshWalletBalance() async {
+    if (!_blockchain.isWalletConnected || _demoMode) return;
+
+    if (!mounted) return;
+
+    setState(() {
+      _balanceLoading = true;
+      _balanceError = null;
+    });
+
+    try {
+      final balance = await _blockchain.getWalletBalance();
+
+      if (!mounted) return;
+
+      setState(() {
+        _walletBalance =
+            (balance.getInWei.toDouble() / 1e18).toStringAsFixed(6);
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _balanceError = error.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _balanceLoading = false;
+        });
+      }
+    }
+  }
+
+  // SNACKBAR
   void _showMessage(String message) {
     if (!mounted) return;
 
@@ -130,6 +201,7 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  // VALIDASI PEMILIK WALLET
   bool _isCurrentWalletOwner(LoanModel loan) {
     final connectedAddress = _blockchain.walletAddress;
 
@@ -175,7 +247,7 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     if (!_blockchain.isWalletConnected) {
-      _showMessage('Hubungkan wallet terlebih dahulu melalui Settings.');
+      _showMessage('Wallet belum tersedia. Periksa konfigurasi .env.');
       return;
     }
 
@@ -229,7 +301,7 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     if (!_blockchain.isWalletConnected) {
-      _showMessage('Hubungkan wallet terlebih dahulu.');
+      _showMessage('Wallet belum tersedia.');
       return;
     }
 
@@ -290,7 +362,7 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     if (!_blockchain.isWalletConnected) {
-      _showMessage('Hubungkan wallet terlebih dahulu.');
+      _showMessage('Wallet belum tersedia.');
       return;
     }
 
@@ -327,6 +399,7 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  // DIALOG PEMINJAMAN
   void _showBorrowDialog() {
     showDialog<void>(
       context: context,
@@ -357,11 +430,19 @@ class _MainScreenState extends State<MainScreen> {
         onCancel: _cancelLoan,
         isDemoMode: _demoMode,
       ),
-      ActivityScreen(activities: _activities),
+      ActivityScreen(
+        activities: _activities,
+      ),
       SettingsScreen(
         themeMode: widget.themeMode,
         onToggleTheme: widget.onToggleTheme,
         blockchain: _blockchain,
+        walletInitializing: _walletInitializing,
+        walletError: _walletError,
+        walletBalance: _walletBalance,
+        balanceLoading: _balanceLoading,
+        balanceError: _balanceError,
+        onRefreshBalance: _refreshWalletBalance,
       ),
     ];
 

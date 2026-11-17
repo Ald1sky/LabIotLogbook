@@ -19,9 +19,31 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.8
 
 flutter:
   uses-material-design: true
   assets:
     - assets/abi/lab_iot_blockchain.json
     - .env
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.jpeg"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/app_icon.jpeg"
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: "assets/splash/splash_logo.jpeg"
+
+  android_12:
+    color: "#FFFFFF"
+    image: "assets/splash/splash_logo.jpeg"
+    icon_background_color: "#FFFFFF"
+
+  android: true
+  ios: true
+  web: false

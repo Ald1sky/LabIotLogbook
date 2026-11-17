@@ -45,13 +45,7 @@ class _LoanScreenState extends State<LoanScreen> {
         title: const Text(
           'Data Peminjaman',
           style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            onPressed: widget.onBorrow,
-            icon: const Icon(Icons.add),
-          ),
-        ],
+        ),   
       ),
       body: Column(
         children: [

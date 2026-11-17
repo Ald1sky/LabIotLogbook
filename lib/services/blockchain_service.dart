@@ -1,5 +1,6 @@
 
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:web3dart/web3dart.dart';
 import 'package:wallet/wallet.dart';
@@ -12,14 +13,13 @@ class BlockchainService {
   DeployedContract? _contract;
 
   EthPrivateKey? _credentials;
-
   String? _walletAddress;
 
   String? get walletAddress => _walletAddress;
 
   bool get isWalletConnected => _credentials != null;
 
-  // Inisialisasi koneksi blockchain.
+  // INISIALISASI RPC DAN SMART CONTRACT
   Future<void> initialize() async {
     if (!BlockchainConfig.isRpcConfigured) {
       throw StateError('RPC Sepolia belum dikonfigurasi.');
@@ -53,17 +53,36 @@ class BlockchainService {
 
       _client = client;
       _contract = contract;
-    } catch (error) {
+    } catch (_) {
       client.dispose();
       rethrow;
     }
   }
 
-  // Menghubungkan wallet menggunakan private key.
-  // Private key hanya disimpan sementara di memori.
-  Future<String> connectWallet(String privateKey) async {
-    await initialize();
+  // INISIALISASI WALLET DARI .ENV
+  Future<void> initializeWallet() async {
+    if (isWalletConnected) return;
 
+    final privateKey = dotenv.env['PRIVATE_KEY']?.trim();
+
+    if (privateKey == null || privateKey.isEmpty) {
+      throw StateError(
+        'PRIVATE_KEY tidak ditemukan di file .env.',
+      );
+    }
+
+    final credentials = EthPrivateKey.fromHex(privateKey);
+
+    _credentials = credentials;
+
+    _walletAddress = bytesToHex(
+      credentials.address.value,
+      include0x: true,
+    );
+  }
+
+  // KOMPATIBILITAS DENGAN KODE LAMA
+  Future<String> connectWallet(String privateKey) async {
     final key = privateKey.trim();
 
     if (key.isEmpty) {
@@ -72,25 +91,17 @@ class BlockchainService {
 
     final credentials = EthPrivateKey.fromHex(key);
 
-    final address = credentials.address;
-
     _credentials = credentials;
 
     _walletAddress = bytesToHex(
-      address.value,
+      credentials.address.value,
       include0x: true,
     );
 
     return _walletAddress!;
   }
 
-  // Memutuskan koneksi wallet dari service.
-  void disconnectWallet() {
-    _credentials = null;
-    _walletAddress = null;
-  }
-
-  // Memeriksa saldo wallet.
+  // MENGAMBIL SALDO WALLET
   Future<EtherAmount> getWalletBalance() async {
     await initialize();
 
@@ -103,7 +114,7 @@ class BlockchainService {
     );
   }
 
-  // Mengirim transaksi ke smart contract.
+  // MENGIRIM TRANSAKSI SMART CONTRACT
   Future<String> _sendContractTransaction(
     String functionName,
     List<dynamic> params,
@@ -111,7 +122,7 @@ class BlockchainService {
     await initialize();
 
     if (_credentials == null) {
-      throw StateError('Hubungkan wallet terlebih dahulu.');
+      throw StateError('Wallet belum terhubung.');
     }
 
     final function = _contract!.function(functionName);
@@ -129,7 +140,7 @@ class BlockchainService {
     );
   }
 
-  // TRANSAKSI 1: Meminjam alat.
+  // TRANSAKSI: MEMINJAM ALAT
   Future<String> pinjamAlat(
     String namaAlat,
     String namaPeminjam,
@@ -150,7 +161,7 @@ class BlockchainService {
     );
   }
 
-  // TRANSAKSI 2: Mengembalikan alat.
+  // TRANSAKSI: MENGEMBALIKAN ALAT
   Future<String> kembalikanAlat(int id) async {
     if (id < 0) {
       throw ArgumentError('ID peminjaman tidak valid.');
@@ -158,13 +169,11 @@ class BlockchainService {
 
     return _sendContractTransaction(
       'kembalikanAlat',
-      [
-        BigInt.from(id),
-      ],
+      [BigInt.from(id)],
     );
   }
 
-  // TRANSAKSI 3: Membatalkan peminjaman.
+  // TRANSAKSI: MEMBATALKAN PEMINJAMAN
   Future<String> batalkanPeminjaman(int id) async {
     if (id < 0) {
       throw ArgumentError('ID peminjaman tidak valid.');
@@ -172,13 +181,11 @@ class BlockchainService {
 
     return _sendContractTransaction(
       'batalkanPeminjaman',
-      [
-        BigInt.from(id),
-      ],
+      [BigInt.from(id)],
     );
   }
 
-  // READ: Mengambil jumlah seluruh log.
+  // READ: MENGAMBIL JUMLAH SELURUH LOG
   Future<int> getJumlahLog() async {
     await initialize();
 
@@ -191,16 +198,14 @@ class BlockchainService {
     return (result.first as BigInt).toInt();
   }
 
-  // READ: Mengambil detail log.
+  // READ: MENGAMBIL DETAIL LOG
   Future<LoanModel> getLog(int id) async {
     await initialize();
 
     final result = await _client!.call(
       contract: _contract!,
       function: _contract!.function('ambilLog'),
-      params: [
-        BigInt.from(id),
-      ],
+      params: [BigInt.from(id)],
     );
 
     return LoanModel(
@@ -218,23 +223,23 @@ class BlockchainService {
     );
   }
 
-  // READ: Mengambil seluruh data peminjaman.
+  // READ: MENGAMBIL SELURUH DATA PEMINJAMAN
   Future<List<LoanModel>> getAllLogs() async {
     final jumlah = await getJumlahLog();
 
     final List<LoanModel> logs = [];
 
     for (int id = 0; id < jumlah; id++) {
-      final loan = await getLog(id);
-      logs.add(loan);
+      logs.add(await getLog(id));
     }
 
     return logs.reversed.toList();
   }
 
-  // Menutup koneksi blockchain.
+  // MENUTUP KONEKSI
   void dispose() {
-    disconnectWallet();
+    _credentials = null;
+    _walletAddress = null;
 
     _client?.dispose();
 

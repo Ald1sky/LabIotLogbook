@@ -36,7 +36,7 @@ class DashboardScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'LabIotLogbook',
+          'Lab IoT Logbook',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -58,7 +58,7 @@ class DashboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Loan Dashboard',
+            'Dashboard',
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),

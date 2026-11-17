@@ -1,124 +1,33 @@
-import 'package:flutter/material.dart';
 
+import 'package:flutter/material.dart';
 
 import '../config/blockchain_config.dart';
 import '../services/blockchain_service.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends StatelessWidget {
   final ThemeMode themeMode;
   final ValueChanged<bool> onToggleTheme;
   final BlockchainService blockchain;
+
+  final bool walletInitializing;
+  final String? walletError;
+  final String? walletBalance;
+  final bool balanceLoading;
+  final String? balanceError;
+  final VoidCallback onRefreshBalance;
 
   const SettingsScreen({
     super.key,
     required this.themeMode,
     required this.onToggleTheme,
     required this.blockchain,
+    required this.walletInitializing,
+    required this.walletError,
+    required this.walletBalance,
+    required this.balanceLoading,
+    required this.balanceError,
+    required this.onRefreshBalance,
   });
-
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  final TextEditingController _privateKeyController =
-      TextEditingController();
-
-  bool _obscureKey = true;
-  bool _connecting = false;
-  String? _walletAddress;
-  String? _balance;
-  String? _walletError;
-
-  bool get _isConnected => widget.blockchain.isWalletConnected;
-
-  @override
-  void dispose() {
-    _privateKeyController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _connectWallet() async {
-    if (_privateKeyController.text.trim().isEmpty) {
-      _showMessage('Masukkan private key terlebih dahulu.');
-      return;
-    }
-
-    setState(() {
-      _connecting = true;
-      _walletError = null;
-    });
-
-    try {
-      final address = await widget.blockchain.connectWallet(
-        _privateKeyController.text.trim(),
-      );
-
-      // Bersihkan input setelah proses koneksi.
-      _privateKeyController.clear();
-
-      final balance = await widget.blockchain.getWalletBalance();
-
-      if (!mounted) return;
-
-      setState(() {
-        _walletAddress = address;
-        _balance =
-            (balance.getInWei.toDouble() / 1e18).toStringAsFixed(6)
-            ;
-        _connecting = false;
-      });
-
-      _showMessage('Wallet berhasil dihubungkan.');
-    } catch (error) {
-      widget.blockchain.disconnectWallet();
-
-      if (!mounted) return;
-
-      setState(() {
-        _connecting = false;
-        _walletAddress = null;
-        _balance = null;
-        _walletError = error.toString();
-      });
-
-      _showMessage('Gagal menghubungkan wallet.');
-    }
-  }
-
-  Future<void> _refreshBalance() async {
-    try {
-      final balance = await widget.blockchain.getWalletBalance();
-
-      if (!mounted) return;
-
-      setState(() {
-        _balance = 
-            (balance.getInWei.toDouble() / 1e18).toStringAsFixed(6);
-            
-      });
-    } catch (error) {
-      _showMessage('Gagal mengambil saldo: $error');
-    }
-  }
-
-  void _disconnectWallet() {
-    widget.blockchain.disconnectWallet();
-
-    setState(() {
-      _walletAddress = null;
-      _balance = null;
-      _walletError = null;
-    });
-
-    _showMessage('Wallet berhasil diputuskan.');
-  }
-
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
 
   Widget _sectionTitle(String title, ThemeData theme) {
     return Text(
@@ -133,7 +42,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = widget.themeMode == ThemeMode.dark;
+    final isDark = themeMode == ThemeMode.dark;
+    final isConnected = blockchain.isWalletConnected;
 
     return Scaffold(
       appBar: AppBar(
@@ -152,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Card(
             child: SwitchListTile(
               value: isDark,
-              onChanged: widget.onToggleTheme,
+              onChanged: onToggleTheme,
               secondary: Icon(
                 isDark ? Icons.dark_mode : Icons.light_mode,
                 color: theme.colorScheme.primary,
@@ -196,15 +106,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: _isConnected
+                          color: isConnected
                               ? Colors.green.withValues(alpha: 0.12)
                               : theme.colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          _isConnected ? 'Connected' : 'Disconnected',
+                          walletInitializing
+                              ? 'Loading'
+                              : isConnected
+                                  ? 'Loaded'
+                                  : 'Unavailable',
                           style: TextStyle(
-                            color: _isConnected
+                            color: isConnected
                                 ? Colors.green
                                 : theme.hintColor,
                             fontSize: 11,
@@ -217,83 +131,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   const SizedBox(height: 20),
 
-                  if (!_isConnected) ...[
-                    const Text(
-                      'Private Key',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 8),
-
-                    TextField(
-                      controller: _privateKeyController,
-                      obscureText: _obscureKey,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      decoration: InputDecoration(
-                        hintText: 'Masukkan private key',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          onPressed: () {
-                            setState(() {
-                              _obscureKey = !_obscureKey;
-                            });
-                          },
-                          icon: Icon(
-                            _obscureKey
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    Text(
-                      'Gunakan wallet khusus Ethereum Sepolia. '
-                      'Jangan gunakan wallet pribadi.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.hintColor,
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _connecting ? null : _connectWallet,
-                        child: _connecting
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('Connect Wallet'),
-                      ),
-                    ),
-
-                    if (_walletError != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        _walletError!,
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ] else ...[
+                  if (walletInitializing) ...[
+                    const LinearProgressIndicator(),
+                    const SizedBox(height: 12),
+                    const Text('Memuat wallet dari environment...'),
+                  ] else if (isConnected) ...[
                     const Text(
                       'Wallet Address',
-                      style: TextStyle(fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(height: 8),
 
                     SelectableText(
-                      _walletAddress ?? '',
+                      blockchain.walletAddress ?? '-',
                       style: theme.textTheme.bodySmall,
                     ),
 
@@ -301,7 +153,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     const Text(
                       'Sepolia Balance',
-                      style: TextStyle(fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(height: 8),
 
@@ -309,28 +163,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            '${_balance ?? '-'} ETH',
+                            balanceLoading
+                                ? 'Memuat saldo...'
+                                : '${walletBalance ?? '-'} ETH',
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                         IconButton(
-                          onPressed: _refreshBalance,
+                          onPressed: balanceLoading
+                              ? null
+                              : onRefreshBalance,
                           tooltip: 'Refresh balance',
                           icon: const Icon(Icons.refresh),
                         ),
                       ],
                     ),
 
-                    const SizedBox(height: 16),
+                    if (balanceError != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Gagal membaca saldo: $balanceError',
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
 
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _disconnectWallet,
-                        icon: const Icon(Icons.logout),
-                        label: const Text('Disconnect Wallet'),
+                    const SizedBox(height: 8),
+
+                    Text(
+                      'Wallet dimuat dari environment configuration.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.hintColor,
+                      ),
+                    ),
+                  ] else ...[
+                    Text(
+                      walletError ?? 'Wallet belum tersedia.',
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Periksa PRIVATE_KEY pada konfigurasi environment.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.hintColor,
                       ),
                     ),
                   ],
@@ -371,7 +253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   const SizedBox(height: 16),
 
-                  const Text('RPC Status'),
+                  const Text('RPC Configuration'),
                   const SizedBox(height: 4),
                   Text(
                     BlockchainConfig.isRpcConfigured
