@@ -8,9 +8,9 @@ class BlockchainConfig {
   static const String networkName = 'Ethereum Sepolia';
 
   static String get rpcUrl =>
-      dotenv.env['SEPOLIA_RPC_URL'] ?? 'https://eth-sepolia.g.alchemy.com/v2/alch_VRuKrI9fdlp_mpUq-BwSd';
+      dotenv.env['SEPOLIA_RPC_URL']?.trim() ?? '';
 
- static const String reownProjectId =
+  static const String reownProjectId =
       '50a6f8e861fea53a5e5cc593ce5130fb';
 
   static const String abiPath =
