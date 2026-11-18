@@ -1,8 +1,12 @@
 # LabIotLogbook
 
-Aplikasi pencatatan peminjaman dan pengembalian peralatan laboratorium berbasis Flutter dan Ethereum Blockchain.
+Aplikasi pencatatan peminjaman dan pengembalian peralatan laboratorium
+berbasis Flutter dan Ethereum Blockchain.
 
-LabIotLogbook menggunakan Smart Contract pada jaringan Ethereum Sepolia Testnet untuk menyimpan riwayat peminjaman, pengembalian, dan pembatalan peminjaman alat laboratorium.
+LabIotLogbook menggunakan Smart Contract pada jaringan Ethereum Sepolia
+Testnet untuk menyimpan riwayat peminjaman, pengembalian, dan pembatalan
+peminjaman alat laboratorium. Koneksi wallet dan persetujuan transaksi
+dilakukan melalui **Reown AppKit** dengan wallet seperti **MetaMask**.
 
 ## 1. Fitur Aplikasi
 
@@ -12,35 +16,65 @@ LabIotLogbook menggunakan Smart Contract pada jaringan Ethereum Sepolia Testnet 
 - Pembatalan peminjaman.
 - Riwayat aktivitas peminjaman.
 - Integrasi Ethereum Sepolia Testnet.
-- Koneksi wallet menggunakan private key.
+- Koneksi wallet melalui Reown AppKit (WalletConnect).
+- Dukungan MetaMask dan wallet lain yang kompatibel dengan Reown.
 - Menampilkan alamat wallet dan saldo ETH Sepolia.
+- Persetujuan transaksi melalui wallet yang terhubung.
 - Mode Light dan Dark.
 
 ## 2. Teknologi yang Digunakan
 
-| Teknologi | Keterangan |
-|---|---|
-| Flutter | Framework aplikasi mobile |
-| Dart | Bahasa pemrograman |
-| Solidity | Smart Contract |
-| Ethereum | Blockchain |
-| Sepolia | Test Network |
-| web3dart | Integrasi Flutter dengan Ethereum |
-| flutter_dotenv | Konfigurasi environment |
-| VS Code | Code Editor |
+---
+
+Teknologi Keterangan
+
+---
+
+Flutter Framework aplikasi mobile
+
+Dart Bahasa pemrograman
+
+Solidity Smart Contract
+
+Ethereum Blockchain
+
+Sepolia Test Network
+
+web3dart Membaca data dan berinteraksi
+dengan smart contract melalui RPC
+
+Reown AppKit Menghubungkan wallet dan meminta
+persetujuan transaksi
+
+WalletConnect Protokol koneksi aplikasi dengan
+wallet
+
+MetaMask Salah satu wallet yang dapat
+dihubungkan
+
+flutter_dotenv Konfigurasi environment
+
+http Komunikasi HTTP dengan RPC
+
+VS Code Code Editor
+
+---
 
 ## 3. Informasi Smart Contract
 
-| Informasi | Detail |
-|---|---|
-| Contract Name | LabIoTLogbook |
-| Network | Ethereum Sepolia Testnet |
-| Chain ID | 11155111 |
-| Contract Address | `0x434bb4B9e10Dd9A277824f6E568FE389292a3f31` |
+Informasi Detail
+
+---
+
+Contract Name LabIoTLogbook
+Network Ethereum Sepolia Testnet
+Chain ID 11155111
+Contract Address `0x434bb4B9e10Dd9A277824f6E568FE389292a3f31`
 
 **Link Smart Contract:**
 
-[View Contract on Sepolia Etherscan](https://sepolia.etherscan.io/address/0x434bb4B9e10Dd9A277824f6E568FE389292a3f31)
+[View Contract on Sepolia
+Etherscan](https://sepolia.etherscan.io/address/0x434bb4B9e10Dd9A277824f6E568FE389292a3f31)
 
 **Jaringan:** Sepolia Testnet, bukan Ethereum Mainnet.
 
@@ -48,13 +82,16 @@ LabIotLogbook menggunakan Smart Contract pada jaringan Ethereum Sepolia Testnet 
 
 Dependencies utama yang digunakan:
 
-| Package | Versi |
-|---|---|
-| web3dart | ^3.0.3 |
-| wallet | ^0.0.18 |
-| Flutter SDK | Sesuai instalasi pengembangan |
-| flutter_dotenv | Lihat pubspec.yaml |
-| http | Lihat pubspec.yaml |
+Package Versi
+
+---
+
+web3dart \^3.0.3
+reown_appkit \^1.9.0
+wallet \^0.0.18 (masih tercantum di pubspec.yaml)
+flutter_dotenv \^6.0.2
+http \^1.2.2
+Flutter SDK Batas SDK proyek `>=3.8.0 <4.0.0`
 
 Untuk melihat versi Flutter dan Dart:
 
@@ -68,18 +105,20 @@ Untuk melihat versi seluruh package yang terpasang:
 flutter pub deps
 ```
 
-File `pubspec.lock` digunakan sebagai referensi versi dependency yang benar-benar terpasang.
+File `pubspec.lock` digunakan sebagai referensi versi dependency yang
+benar-benar terpasang.
 
 ## 5. Persyaratan Sistem
 
 Sebelum menjalankan aplikasi, pastikan sudah tersedia:
 
-- Flutter SDK.
+- Flutter SDK yang memenuhi batas SDK proyek.
 - Dart SDK (termasuk dalam Flutter).
 - Visual Studio Code.
 - Android SDK atau perangkat Android.
 - Koneksi internet.
-- Wallet MetaMask khusus pengujian.
+- Reown Project ID dari Reown Cloud.
+- Wallet seperti MetaMask yang mendukung Ethereum Sepolia.
 - Sepolia ETH untuk biaya transaksi testnet.
 - RPC URL Ethereum Sepolia.
 
@@ -94,12 +133,10 @@ git clone https://github.com/USERNAME/REPOSITORY.git
 Masuk ke direktori project:
 
 ```bash
-cd chain_todo
+cd LabIotLogbook
 ```
 
 ### B. Install Dependencies
-
-Jalankan perintah:
 
 ```bash
 flutter pub get
@@ -115,13 +152,22 @@ Isi file `.env`:
 SEPOLIA_RPC_URL=https://your-sepolia-rpc-url
 ```
 
-Ganti URL tersebut dengan RPC URL Ethereum Sepolia yang digunakan.
+Ganti URL tersebut dengan RPC URL Ethereum Sepolia milikmu.
 
-**Catatan:** Jangan memasukkan private key wallet ke dalam file `.env` atau repository.
+### D. Konfigurasi Reown AppKit
 
-### D. Periksa Konfigurasi
+1.  Buat project pada Reown Cloud dan dapatkan Project ID.
+2.  Buka `lib/config/blockchain_config.dart`.
+3.  Isi `reownProjectId` dengan Project ID milik project Reown tersebut.
+4.  Pastikan konfigurasi jaringan menggunakan Ethereum Sepolia dengan
+    Chain ID `11155111`.
 
-Jalankan:
+Reown AppKit digunakan untuk menghubungkan aplikasi dengan wallet dan
+meminta persetujuan transaksi. Pengguna menyetujui transaksi melalui
+wallet yang terhubung, misalnya MetaMask. RPC Sepolia tetap digunakan
+aplikasi untuk membaca data blockchain dan memeriksa status transaksi.
+
+### E. Periksa Konfigurasi
 
 ```bash
 flutter doctor
@@ -133,7 +179,7 @@ Kemudian periksa kode:
 flutter analyze
 ```
 
-### E. Jalankan Aplikasi
+### F. Jalankan Aplikasi
 
 Hubungkan perangkat Android atau jalankan emulator, kemudian:
 
@@ -146,6 +192,10 @@ Jalankan aplikasi:
 ```bash
 flutter run
 ```
+
+Setelah aplikasi terbuka, masuk ke menu Settings dan pilih **Connect
+Wallet** untuk menghubungkan MetaMask atau wallet lain melalui Reown
+AppKit. Pastikan wallet menggunakan jaringan Ethereum Sepolia.
 
 ## 7. Struktur Project
 
@@ -194,25 +244,35 @@ chain_todo/
 
 Smart Contract `LabIoTLogbook` menyediakan fungsi utama berikut:
 
-| Fungsi | Keterangan |
-|---|---|
-| `pinjamAlat()` | Mencatat peminjaman alat |
-| `kembalikanAlat()` | Mencatat pengembalian alat |
-| `batalkanPeminjaman()` | Membatalkan peminjaman |
-| `jumlahLog()` | Mengambil jumlah seluruh log |
-| `ambilLog()` | Mengambil detail log berdasarkan ID |
+Fungsi Keterangan
 
-Setiap transaksi perubahan data dicatat melalui jaringan Ethereum Sepolia.
+---
+
+`pinjamAlat()` Mencatat peminjaman alat
+`kembalikanAlat()` Mencatat pengembalian alat
+`batalkanPeminjaman()` Membatalkan peminjaman
+`jumlahLog()` Mengambil jumlah seluruh log
+`ambilLog()` Mengambil detail log berdasarkan ID
+
+Setiap transaksi perubahan data dicatat melalui jaringan Ethereum
+Sepolia. Transaksi dikirim melalui Reown AppKit dan harus disetujui oleh
+wallet yang terhubung.
 
 ## 9. Keamanan
 
 - Gunakan wallet khusus pengujian.
 - Gunakan hanya Sepolia Test ETH.
-- Jangan menggunakan private key wallet utama.
-- Jangan mengunggah private key ke GitHub.
+- Jangan memasukkan atau menyimpan private key wallet di aplikasi.
+- Jangan mengunggah private key maupun RPC URL yang berisi API key ke
+  GitHub.
 - File `.env` harus dimasukkan ke `.gitignore`.
+- Reown AppKit menghubungkan aplikasi dengan wallet; penandatanganan
+  transaksi dilakukan oleh wallet, bukan dengan menyimpan private key
+  di aplikasi.
+- Simpan dan gunakan Reown Project ID sesuai konfigurasi aplikasi.
+  Project ID bukan pengganti private key dan tidak boleh digunakan
+  untuk menyimpan kredensial wallet.
 - Data pribadi tidak disarankan disimpan langsung di blockchain.
-- Private key yang digunakan langsung di aplikasi mobile memiliki risiko terekspos melalui APK atau proses aplikasi. Metode ini hanya digunakan untuk kebutuhan demonstrasi dan pengujian akademik.
 
 Contoh `.gitignore`:
 
@@ -230,18 +290,27 @@ build/
 Untuk memeriksa transaksi dan data Smart Contract, gunakan:
 
 - [Sepolia Etherscan](https://sepolia.etherscan.io/)
-- [LabIoTLogbook Smart Contract](https://sepolia.etherscan.io/address/0x434bb4B9e10Dd9A277824f6E568FE389292a3f31)
+- [LabIoTLogbook Smart
+  Contract](https://sepolia.etherscan.io/address/0x434bb4B9e10Dd9A277824f6E568FE389292a3f31)
 
-Hash transaksi dapat dimasukkan ke kolom pencarian Etherscan untuk melihat status transaksi.
+Hash transaksi dapat dimasukkan ke kolom pencarian Etherscan untuk
+melihat status transaksi.
 
 ## 11. Catatan Pengembangan
 
-Project ini dikembangkan sebagai proyek pembelajaran integrasi aplikasi mobile Flutter dengan teknologi blockchain Ethereum.
+Project ini dikembangkan sebagai proyek pembelajaran integrasi aplikasi
+mobile Flutter dengan teknologi blockchain Ethereum.
 
-Seluruh transaksi pengujian menggunakan Ethereum Sepolia Testnet dan tidak menggunakan aset kripto pada jaringan utama.
+Aplikasi menggunakan Reown AppKit untuk koneksi wallet dan persetujuan
+transaksi. Pembacaan data blockchain dan pemeriksaan status transaksi
+menggunakan RPC Ethereum Sepolia.
+
+Seluruh transaksi pengujian menggunakan Ethereum Sepolia Testnet dan
+tidak menggunakan aset kripto pada jaringan utama.
 
 ---
 
-**LabIotLogbook**  
-Flutter Mobile Application + Ethereum Blockchain  
+**LabIotLogbook**\
+Flutter Mobile Application + Ethereum Blockchain\
+Reown AppKit + MetaMask\
 Ethereum Sepolia Testnet
