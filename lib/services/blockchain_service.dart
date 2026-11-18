@@ -18,7 +18,12 @@ class BlockchainService {
   String? get walletAddress => _walletAddress;
 
   bool get isWalletConnected =>
+
       _walletAddress != null && _appKitModal?.isConnected == true;
+
+      _walletAddress != null &&
+      _appKitModal?.isConnected == true;
+ 57a3c58 (Update fitur)
 
   // ============================================================
   // INITIALIZE
@@ -78,9 +83,11 @@ class BlockchainService {
       15,
     ];
 
-    for (int attempt = 0;
-        attempt <= retryDelays.length;
-        attempt++) {
+    for (
+      int attempt = 0;
+      attempt <= retryDelays.length;
+      attempt++
+    ) {
       try {
         return await request();
       } catch (e) {
@@ -106,8 +113,9 @@ class BlockchainService {
   }
 
   // ============================================================
-  // WALLET
+  // WALLET - REOWN APPKIT
   // ============================================================
+
 
   Future<void> connectWallet(String address, IReownAppKitModal appKitModal) async {
     final normalized = address.trim();
@@ -119,12 +127,54 @@ class BlockchainService {
   }
 
   void disconnectWallet() {
+
+  Future<String> connectWallet(
+    String address,
+    IReownAppKitModal appKitModal,
+  ) async {
+    await initialize();
+
+    final wallet = address.trim();
+
+    if (wallet.isEmpty) {
+      throw ArgumentError(
+        'Alamat wallet tidak ditemukan.',
+      );
+    }
+
+    if (!RegExp(r'^0x[a-fA-F0-9]{40}$').hasMatch(wallet)) {
+      throw ArgumentError(
+        'Format alamat wallet tidak valid.',
+      );
+    }
+
+    if (!appKitModal.isConnected ||
+        appKitModal.session == null) {
+      throw StateError(
+        'Sesi Reown belum terhubung.',
+      );
+    }
+
+    _appKitModal = appKitModal;
+    _walletAddress = wallet;
+
+    return _walletAddress!;
+  }
+
+  void disconnectWallet() {
+    _appKitModal = null;
+ 57a3c58 (Update fitur)
     _walletAddress = null;
     _appKitModal = null;
   }
 
+  // ============================================================
+  // GET WALLET BALANCE
+  // ============================================================
+
   Future<EtherAmount> getWalletBalance() async {
     await initialize();
+
     if (!isWalletConnected) {
       throw StateError('Wallet belum terhubung.');
     }
@@ -132,11 +182,34 @@ class BlockchainService {
     return _withRpcRetry(() => _client!.getBalance(address));
   }
 
+
+
+    if (!isWalletConnected || _walletAddress == null) {
+      throw StateError(
+        'Wallet belum terhubung.',
+      );
+    }
+
+    final address = EthereumAddress.fromHex(
+      _walletAddress!,
+    );
+
+    return _withRpcRetry(
+      () => _client!.getBalance(address),
+    );
+  }
+
+  // ============================================================
+  // SEND CONTRACT TRANSACTION - REOWN
+  // ============================================================
+
+ 57a3c58 (Update fitur)
   Future<String> _sendContractTransaction(
     String functionName,
     List<dynamic> params,
   ) async {
     await initialize();
+
     final modal = _appKitModal;
     if (!isWalletConnected || modal == null) {
       throw StateError('Hubungkan wallet terlebih dahulu.');
@@ -147,6 +220,38 @@ class BlockchainService {
       throw StateError('Sesi wallet Reown tidak ditemukan. Hubungkan ulang wallet.');
     }
 
+    final appKit = _appKitModal;
+
+    if (!isWalletConnected || appKit == null) {
+      throw StateError(
+        'Hubungkan wallet terlebih dahulu.',
+      );
+    }
+
+    final session = appKit.session;
+
+    if (session == null) {
+      throw StateError(
+        'Sesi wallet tidak ditemukan.',
+      );
+    }
+
+    // Pastikan wallet menggunakan Ethereum Sepolia.
+    final expectedChain =
+        'eip155:${BlockchainConfig.chainId}';
+
+    if (session.chainId != expectedChain) {
+      throw StateError(
+        'Wallet belum menggunakan Ethereum Sepolia. '
+        'Silakan ganti jaringan melalui Reown AppKit.',
+      );
+    }
+
+    final function = _contract!.function(
+      functionName,
+    );
+ 57a3c58 (Update fitur)
+
     final chainId = 'eip155:${BlockchainConfig.chainId}';
     final function = _contract!.function(functionName);
     final transaction = Transaction(
@@ -156,15 +261,24 @@ class BlockchainService {
       maxGas: 600000,
     );
 
+
     // Penandatanganan dan pengiriman transaksi dilakukan oleh wallet melalui Reown.
     final dynamic response = await modal.requestWriteContract(
       topic: session.topic,
       chainId: chainId,
+
+    // Kirim transaksi ke wallet melalui Reown AppKit.
+    // Pengguna harus menyetujui transaksi dari wallet.
+    final response = await appKit.requestWriteContract(
+      topic: session.topic,
+      chainId: expectedChain,
+ 57a3c58 (Update fitur)
       deployedContract: _contract!,
       functionName: functionName,
       transaction: transaction,
       parameters: params,
     );
+
 
     final hash = _extractTransactionHash(response);
     if (hash == null) {
@@ -173,6 +287,28 @@ class BlockchainService {
 
     const maxAttempts = 90;
     for (var attempt = 0; attempt < maxAttempts; attempt++) {
+
+    final hash = response.toString();
+
+    if (!RegExp(r'^0x[a-fA-F0-9]{64}$').hasMatch(hash)) {
+      throw StateError(
+        'Wallet tidak mengembalikan transaction hash '
+        'yang valid: $hash',
+      );
+    }
+
+    // ========================================================
+    // WAIT FOR TRANSACTION RECEIPT
+    // ========================================================
+
+    const maxAttempts = 60;
+
+    for (
+      int attempt = 0;
+      attempt < maxAttempts;
+      attempt++
+    ) {
+>>>>>>> 57a3c58 (Update fitur)
       final receipt = await _withRpcRetry(
         () => _client!.getTransactionReceipt(hash),
       );
@@ -181,6 +317,13 @@ class BlockchainService {
         if (receipt.status == false) {
           throw StateError('Transaksi gagal dieksekusi smart contract. Hash: $hash');
         }
+
+
+        throw StateError(
+          'Status receipt transaksi tidak tersedia. '
+          'Hash: $hash',
+        );
+ 57a3c58 (Update fitur)
       }
       await Future.delayed(const Duration(seconds: 2));
     }
@@ -239,7 +382,9 @@ class BlockchainService {
 
   Future<String> kembalikanAlat(int id) async {
     if (id < 0) {
-      throw ArgumentError('ID peminjaman tidak valid.');
+      throw ArgumentError(
+        'ID peminjaman tidak valid.',
+      );
     }
 
     return _sendContractTransaction(
@@ -252,7 +397,9 @@ class BlockchainService {
 
   Future<String> batalkanPeminjaman(int id) async {
     if (id < 0) {
-      throw ArgumentError('ID peminjaman tidak valid.');
+      throw ArgumentError(
+        'ID peminjaman tidak valid.',
+      );
     }
 
     return _sendContractTransaction(
@@ -285,7 +432,9 @@ class BlockchainService {
     await initialize();
 
     if (id < 0) {
-      throw ArgumentError('ID peminjaman tidak valid.');
+      throw ArgumentError(
+        'ID peminjaman tidak valid.',
+      );
     }
 
     final result = await _withRpcRetry(
@@ -398,6 +547,7 @@ class BlockchainService {
             message:
                 '${loan.namaPeminjam} membatalkan peminjaman '
                 '${loan.namaAlat}',
+
             // Kontrak lama tidak menyimpan waktu pembatalan.
             // Waktu pinjam dipakai sebagai perkiraan urutan.
             timestamp: loan.waktuPinjam,

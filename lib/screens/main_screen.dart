@@ -2,10 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+
 import 'package:flutter/services.dart';
 
 import 'package:reown_appkit/reown_appkit.dart';
+57a3c58 (Update fitur)
 
+import 'package:flutter/services.dart';
+
+import 'package:reown_appkit/reown_appkit.dart';
 
 import '../config/blockchain_config.dart';
 
@@ -62,8 +67,7 @@ class _MainScreenState extends State<MainScreen> {
   late final ReownAppKitModal _appKitModal;
   bool _appKitReady = false;
 
-
-
+ 57a3c58 (Update fitur)
   bool _walletInitializing = true;
 
   String? _walletError;
@@ -181,7 +185,12 @@ class _MainScreenState extends State<MainScreen> {
       projectId: BlockchainConfig.reownProjectId,
       metadata: const PairingMetadata(
         name: 'LabIoTLogbook',
+
         description: 'Aplikasi peminjaman alat laboratorium berbasis blockchain',
+
+        description:
+            'Aplikasi peminjaman alat laboratorium berbasis blockchain',
+ 57a3c58 (Update fitur)
         url: 'https://reown.com/',
         icons: ['https://reown.com/logo.png'],
         redirect: Redirect(
@@ -387,11 +396,17 @@ class _MainScreenState extends State<MainScreen> {
 
       final balance = await _blockchain.getWalletBalance();
 
+
         final wei = balance.getInWei;
 
         final formatted = (wei / BigInt.from(10).pow(18))
 
           .toStringAsFixed(6);
+
+      final wei = balance.getInWei;
+
+      final formatted = (wei / BigInt.from(10).pow(18)).toStringAsFixed(6);
+57a3c58 (Update fitur)
 
 
 
@@ -522,6 +537,18 @@ class _MainScreenState extends State<MainScreen> {
 
       setState(() {
 
+      if (!mounted) return;
+
+      setState(() {
+        _activities = activities;
+
+        _loadError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+ 57a3c58 (Update fitur)
         _loadError = 'Gagal membaca blockchain: $e';
 
       });
@@ -790,7 +817,12 @@ class _MainScreenState extends State<MainScreen> {
 
     if (!_blockchain.isWalletConnected) {
 
+
       _showMessage('Wallet belum terhubung. Hubungkan wallet melalui menu Settings.');
+
+      _showMessage(
+          'Wallet belum terhubung. Hubungkan wallet melalui menu Settings.');
+ 57a3c58 (Update fitur)
 
       return;
 
@@ -1166,6 +1198,8 @@ class _MainScreenState extends State<MainScreen> {
         onConnectWallet: _connectWallet,
         onDisconnectWallet: _disconnectWallet,
 
+
+ 57a3c58 (Update fitur)
       ),
 
     ];

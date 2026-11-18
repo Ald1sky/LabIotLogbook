@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import '../config/blockchain_config.dart';
+
 import '../services/blockchain_service.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -29,6 +29,8 @@ class SettingsScreen extends StatelessWidget {
 
 
 
+ 57a3c58 (Update fitur)
+
   const SettingsScreen({
 
     super.key,
@@ -52,7 +54,7 @@ class SettingsScreen extends StatelessWidget {
     required this.onRefreshBalance,
     required this.onConnectWallet,
     required this.onDisconnectWallet,
-
+ 57a3c58 (Update fitur)
   });
 
 
@@ -235,12 +237,16 @@ class SettingsScreen extends StatelessWidget {
 
                           style: TextStyle(
 
+
                             color: isConnected
 
                                 ? Colors.green
 
                                 : theme.hintColor,
 
+
+                            color: isConnected ? Colors.green : theme.hintColor,
+57a3c58 (Update fitur)
                             fontSize: 11,
 
                             fontWeight: FontWeight.w600,
@@ -257,18 +263,24 @@ class SettingsScreen extends StatelessWidget {
 
 
 
+
                   const SizedBox(height: 20),
 
 
 
+
+                  const SizedBox(height: 20),
+ 57a3c58 (Update fitur)
                   if (walletInitializing) ...[
 
                     const LinearProgressIndicator(),
 
                     const SizedBox(height: 12),
 
+
                     const Text('Menyiapkan Reown AppKit...'),
 
+57a3c58 (Update fitur)
                   ] else if (isConnected) ...[
 
                     const Text(
@@ -284,9 +296,7 @@ class SettingsScreen extends StatelessWidget {
                     ),
 
                     const SizedBox(height: 8),
-
-
-
+ 57a3c58 (Update fitur)
                     SelectableText(
 
                       blockchain.walletAddress ?? '-',
@@ -297,10 +307,14 @@ class SettingsScreen extends StatelessWidget {
 
 
 
+
                     const SizedBox(height: 20),
 
 
 
+
+                    const SizedBox(height: 20),
+57a3c58 (Update fitur)
                     const Text(
 
                       'Sepolia Balance',
@@ -317,6 +331,8 @@ class SettingsScreen extends StatelessWidget {
 
 
 
+
+ 57a3c58 (Update fitur)
                     Row(
 
                       children: [
@@ -343,12 +359,16 @@ class SettingsScreen extends StatelessWidget {
 
                         IconButton(
 
+
                           onPressed: balanceLoading
 
                               ? null
 
                               : onRefreshBalance,
 
+
+                          onPressed: balanceLoading ? null : onRefreshBalance,
+ 57a3c58 (Update fitur)
                           tooltip: 'Refresh balance',
 
                           icon: const Icon(Icons.refresh),
@@ -358,9 +378,7 @@ class SettingsScreen extends StatelessWidget {
                       ],
 
                     ),
-
-
-
+ 57a3c58 (Update fitur)
                     if (balanceError != null) ...[
 
                       const SizedBox(height: 8),
@@ -380,6 +398,7 @@ class SettingsScreen extends StatelessWidget {
                       ),
 
                     ],
+
 
 
 
@@ -419,8 +438,48 @@ class SettingsScreen extends StatelessWidget {
 
                     ),
 
+ 57a3c58 (Update fitur)
                     const SizedBox(height: 8),
+                    Text(
 
+                      'Hubungkan MetaMask atau wallet lain melalui Reown AppKit.',
+
+                      'Wallet terhubung melalui Reown AppKit.',
+ 57a3c58 (Update fitur)
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.hintColor,
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: onConnectWallet,
+                        icon: const Icon(Icons.account_balance_wallet),
+                        label: const Text('Connect Wallet'),
+                      ),
+                    ),
+
+
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: onDisconnectWallet,
+                        icon: const Icon(Icons.logout),
+                        label: const Text('Disconnect Wallet'),
+                      ),
+                    ),
+                  ] else ...[
+                    Text(
+                      walletError ?? 'Wallet belum tersedia.',
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Text(
                       'Hubungkan MetaMask atau wallet lain melalui Reown AppKit.',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -436,7 +495,7 @@ class SettingsScreen extends StatelessWidget {
                         label: const Text('Connect Wallet'),
                       ),
                     ),
-
+>>>>>>> 57a3c58 (Update fitur)
                   ],
 
                 ],
@@ -481,10 +540,12 @@ class SettingsScreen extends StatelessWidget {
 
 
 
+
                   const SizedBox(height: 16),
 
 
 
+ 57a3c58 (Update fitur)
                   const Text('Chain ID'),
 
                   const SizedBox(height: 4),
@@ -493,10 +554,12 @@ class SettingsScreen extends StatelessWidget {
 
 
 
+
                   const SizedBox(height: 16),
 
 
 
+57a3c58 (Update fitur)
                   const Text('Contract Address'),
 
                   const SizedBox(height: 4),
@@ -506,6 +569,7 @@ class SettingsScreen extends StatelessWidget {
                     BlockchainConfig.contractAddress,
 
                   ),
+<<<<<<< HEAD
 
 
 
@@ -513,6 +577,9 @@ class SettingsScreen extends StatelessWidget {
 
 
 
+
+                  const SizedBox(height: 16),
+ 57a3c58 (Update fitur)
                   const Text('RPC Configuration'),
 
                   const SizedBox(height: 4),
