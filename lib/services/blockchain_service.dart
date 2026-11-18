@@ -20,17 +20,9 @@ class BlockchainService {
 
   bool get isWalletConnected => _credentials != null;
 
-<<<<<<< HEAD
-  // INISIALISASI RPC DAN SMART CONTRACT
-  Future<void> initialize() async {
-    if (!BlockchainConfig.isRpcConfigured) {
-      throw StateError('RPC Sepolia belum dikonfigurasi.');
-    }
-=======
   // ============================================================
   // INITIALIZE
   // ============================================================
->>>>>>> 653bfee (Update fiturn)
 
   Future<void> initialize() async {
     if (_client != null && _contract != null) {
@@ -65,21 +57,12 @@ class BlockchainService {
 
       _client = client;
       _contract = contract;
-<<<<<<< HEAD
-    } catch (_) {
-=======
     } catch (e) {
->>>>>>> 653bfee (Update fiturn)
       client.dispose();
       rethrow;
     }
   }
 
-<<<<<<< HEAD
-  // INISIALISASI WALLET DARI .ENV
-  Future<void> initializeWallet() async {
-    if (isWalletConnected) return;
-=======
   // ============================================================
   // RPC RETRY
   // ============================================================
@@ -124,29 +107,6 @@ class BlockchainService {
   // ============================================================
 
   Future<String> connectWallet(String privateKey) async {
-    await initialize();
->>>>>>> 653bfee (Update fiturn)
-
-    final privateKey = dotenv.env['PRIVATE_KEY']?.trim();
-
-    if (privateKey == null || privateKey.isEmpty) {
-      throw StateError(
-        'PRIVATE_KEY tidak ditemukan di file .env.',
-      );
-    }
-
-    final credentials = EthPrivateKey.fromHex(privateKey);
-
-    _credentials = credentials;
-
-    _walletAddress = bytesToHex(
-      credentials.address.value,
-      include0x: true,
-    );
-  }
-
-  // KOMPATIBILITAS DENGAN KODE LAMA
-  Future<String> connectWallet(String privateKey) async {
     final key = privateKey.trim();
 
     if (key.isEmpty) {
@@ -165,15 +125,12 @@ class BlockchainService {
     return _walletAddress!;
   }
 
-<<<<<<< HEAD
-  // MENGAMBIL SALDO WALLET
-=======
   void disconnectWallet() {
     _credentials = null;
     _walletAddress = null;
   }
 
->>>>>>> 653bfee (Update fiturn)
+  // MENGAMBIL SALDO WALLET
   Future<EtherAmount> getWalletBalance() async {
     await initialize();
 
@@ -187,15 +144,9 @@ class BlockchainService {
       ),
     );
   }
-
-<<<<<<< HEAD
-  // MENGIRIM TRANSAKSI SMART CONTRACT
-=======
   // ============================================================
   // SEND TRANSACTION
   // ============================================================
-
->>>>>>> 653bfee (Update fiturn)
   Future<String> _sendContractTransaction(
     String functionName,
     List<dynamic> params,
@@ -256,14 +207,10 @@ class BlockchainService {
     );
   }
 
-<<<<<<< HEAD
-  // TRANSAKSI: MEMINJAM ALAT
-=======
   // ============================================================
   // PINJAM ALAT
   // ============================================================
 
->>>>>>> 653bfee (Update fiturn)
   Future<String> pinjamAlat(
     String namaAlat,
     String namaPeminjam,
@@ -282,15 +229,10 @@ class BlockchainService {
       ],
     );
   }
-
-<<<<<<< HEAD
-  // TRANSAKSI: MENGEMBALIKAN ALAT
-=======
   // ============================================================
   // KEMBALIKAN ALAT
   // ============================================================
 
->>>>>>> 653bfee (Update fiturn)
   Future<String> kembalikanAlat(int id) async {
     if (id < 0) {
       throw ArgumentError('ID peminjaman tidak valid.');
@@ -301,15 +243,9 @@ class BlockchainService {
       [BigInt.from(id)],
     );
   }
-
-<<<<<<< HEAD
-  // TRANSAKSI: MEMBATALKAN PEMINJAMAN
-=======
   // ============================================================
   // BATALKAN PEMINJAMAN
   // ============================================================
-
->>>>>>> 653bfee (Update fiturn)
   Future<String> batalkanPeminjaman(int id) async {
     if (id < 0) {
       throw ArgumentError('ID peminjaman tidak valid.');
@@ -320,15 +256,9 @@ class BlockchainService {
       [BigInt.from(id)],
     );
   }
-
-<<<<<<< HEAD
-  // READ: MENGAMBIL JUMLAH SELURUH LOG
-=======
   // ============================================================
   // READ: JUMLAH LOG
   // ============================================================
-
->>>>>>> 653bfee (Update fiturn)
   Future<int> getJumlahLog() async {
     await initialize();
 
@@ -342,17 +272,6 @@ class BlockchainService {
 
     return (result.first as BigInt).toInt();
   }
-
-<<<<<<< HEAD
-  // READ: MENGAMBIL DETAIL LOG
-  Future<LoanModel> getLog(int id) async {
-    await initialize();
-
-    final result = await _client!.call(
-      contract: _contract!,
-      function: _contract!.function('ambilLog'),
-      params: [BigInt.from(id)],
-=======
   // ============================================================
   // READ: SATU LOG
   // ============================================================
@@ -372,7 +291,6 @@ class BlockchainService {
           BigInt.from(id),
         ],
       ),
->>>>>>> 653bfee (Update fiturn)
     );
 
     return LoanModel(
@@ -389,15 +307,9 @@ class BlockchainService {
       ),
     );
   }
-
-<<<<<<< HEAD
-  // READ: MENGAMBIL SELURUH DATA PEMINJAMAN
-=======
   // ============================================================
   // READ: SELURUH LOG
   // ============================================================
-
->>>>>>> 653bfee (Update fiturn)
   Future<List<LoanModel>> getAllLogs() async {
     await initialize();
 
@@ -406,9 +318,6 @@ class BlockchainService {
     final List<LoanModel> logs = [];
 
     for (int id = 0; id < jumlah; id++) {
-<<<<<<< HEAD
-      logs.add(await getLog(id));
-=======
       final loan = await getLog(id);
 
       logs.add(loan);
@@ -419,18 +328,10 @@ class BlockchainService {
           const Duration(milliseconds: 150),
         );
       }
->>>>>>> 653bfee (Update fiturn)
     }
 
     return logs.reversed.toList();
   }
-
-<<<<<<< HEAD
-  // MENUTUP KONEKSI
-  void dispose() {
-    _credentials = null;
-    _walletAddress = null;
-=======
   // ============================================================
 // WATCH SMART CONTRACT EVENT
 // ============================================================
@@ -525,7 +426,6 @@ class BlockchainService {
 
   Future<void> dispose() async {
     disconnectWallet();
->>>>>>> 653bfee (Update fiturn)
 
     await _client?.dispose();
 

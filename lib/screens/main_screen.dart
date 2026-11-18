@@ -92,9 +92,6 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
 
     _loans = List.of(_demoLoans);
-<<<<<<< HEAD
-    _initializeBlockchain();
-=======
     _activities = List.of(_demoActivities);
 
 if (!_demoMode) {
@@ -144,7 +141,6 @@ Future<void> _startEventListeners() async {
     } catch (e) {
       debugPrint('Gagal mendengarkan $eventName: $e');
     }
->>>>>>> 653bfee (Update fiturn)
   }
 }
 
@@ -154,39 +150,6 @@ void dispose() {
   for (final subscription in _eventSubscriptions) {
     unawaited(subscription.cancel());
   }
-
-<<<<<<< HEAD
-  // INITIALISASI BLOCKCHAIN DAN WALLET
-  Future<void> _initializeBlockchain() async {
-    try {
-      await _blockchain.initializeWallet();
-    } catch (error) {
-      if (mounted) {
-        setState(() {
-          _walletError = error.toString();
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _walletInitializing = false;
-        });
-      }
-    }
-
-    if (!mounted) return;
-
-    if (_blockchain.isWalletConnected && !_demoMode) {
-      await _refreshWalletBalance();
-    }
-
-    if (!_demoMode && mounted) {
-      await _refreshBlockchainData();
-    }
-  }
-
-  // REFRESH DATA BLOCKCHAIN
-=======
   unawaited(_blockchain.dispose());
 
   super.dispose();
@@ -195,8 +158,6 @@ void dispose() {
   // ============================================================
   // REFRESH DATA
   // ============================================================
-
->>>>>>> 653bfee (Update fiturn)
   Future<void> _refreshBlockchainData() async {
     if (_demoMode || _refreshInProgress) return;
 
@@ -245,8 +206,6 @@ void dispose() {
     }
   }
 
-<<<<<<< HEAD
-  // REFRESH WALLET BALANCE
   Future<void> _refreshWalletBalance() async {
     if (!_blockchain.isWalletConnected || _demoMode) return;
 
@@ -281,13 +240,9 @@ void dispose() {
     }
   }
 
-  // SNACKBAR
-=======
   // ============================================================
   // MESSAGE
   // ============================================================
-
->>>>>>> 653bfee (Update fiturn)
   void _showMessage(String message) {
     if (!mounted) return;
 
@@ -397,16 +352,9 @@ void dispose() {
       _loading = _refreshInProgress;
     });
   }
-
-<<<<<<< HEAD
-  // VALIDASI PEMILIK WALLET
-  bool _isCurrentWalletOwner(LoanModel loan) {
-    final connectedAddress = _blockchain.walletAddress;
-=======
   // ============================================================
   // ADD LOAN
   // ============================================================
->>>>>>> 653bfee (Update fiturn)
 
   Future<void> _addLoan(
     String namaAlat,
@@ -443,13 +391,9 @@ void dispose() {
     }
 
     if (!_blockchain.isWalletConnected) {
-<<<<<<< HEAD
-      _showMessage('Wallet belum tersedia. Periksa konfigurasi .env.');
-=======
       _showMessage(
         'Hubungkan wallet terlebih dahulu melalui Settings.',
       );
->>>>>>> 653bfee (Update fiturn)
       return;
     }
 
@@ -507,72 +451,7 @@ void dispose() {
 
         _activities.insert(
           0,
-<<<<<<< HEAD
-          '${loan.namaAlat} dikembalikan (demo)',
-        );
-      });
-
-      return;
-    }
-
-    if (!_blockchain.isWalletConnected) {
-      _showMessage('Wallet belum tersedia.');
-      return;
-    }
-
-    final loan = _loans.where((e) => e.id == id).firstOrNull;
-
-    if (loan == null || !loan.sedangDipinjam) {
-      _showMessage('Data peminjaman tidak valid.');
-      return;
-    }
-
-    if (!_isCurrentWalletOwner(loan)) {
-      _showMessage('Wallet ini bukan pemilik peminjaman tersebut.');
-      return;
-    }
-
-    if (_loading) return;
-
-    _setLoading(true);
-
-    try {
-      final hash = await _blockchain.kembalikanAlat(id);
-      _showTransactionHash('Pengembalian', hash);
-    } catch (error) {
-      _showMessage('Gagal mengirim transaksi pengembalian: $error');
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  // PEMBATALAN
-  Future<void> _cancelLoan(int id) async {
-    if (_demoMode) {
-      final index = _loans.indexWhere((e) => e.id == id);
-      if (index == -1) return;
-
-      final loan = _loans[index];
-      if (!loan.sedangDipinjam) return;
-
-      setState(() {
-        _loans[index] = LoanModel(
-          id: loan.id,
-          namaAlat: loan.namaAlat,
-          namaPeminjam: loan.namaPeminjam,
-          waktuPinjam: loan.waktuPinjam,
-          waktuKembali: loan.waktuKembali,
-          statusKembali: false,
-          dibatalkan: true,
-          walletPeminjam: loan.walletPeminjam,
-        );
-
-        _activities.insert(
-          0,
-          'Peminjaman ${loan.namaAlat} dibatalkan (demo)',
-=======
           '${loan.namaPeminjam} mengembalikan ${loan.namaAlat} (demo)',
->>>>>>> 653bfee (Update fiturn)
         );
       });
 
@@ -627,9 +506,7 @@ void dispose() {
     }
   }
 
-<<<<<<< HEAD
-  // DIALOG PEMINJAMAN
-=======
+
   // ============================================================
   // CANCEL LOAN
   // ============================================================
@@ -716,8 +593,6 @@ void dispose() {
   // ============================================================
   // BORROW DIALOG
   // ============================================================
-
->>>>>>> 653bfee (Update fiturn)
   void _showBorrowDialog() {
     if (_transactionInProgress) {
       _showMessage(
@@ -767,12 +642,6 @@ void dispose() {
       ActivityScreen(
         activities: _activities,
       ),
-<<<<<<< HEAD
-      ActivityScreen(
-        activities: _activities,
-      ),
-=======
->>>>>>> 653bfee (Update fiturn)
       SettingsScreen(
         themeMode: widget.themeMode,
         onToggleTheme: widget.onToggleTheme,
