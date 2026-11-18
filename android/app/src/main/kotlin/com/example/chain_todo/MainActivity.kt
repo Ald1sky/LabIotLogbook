@@ -1,4 +1,4 @@
-package com.example.chain_todo
+package com.example.LabIotLogbook
 
 import io.flutter.embedding.android.FlutterActivity
 

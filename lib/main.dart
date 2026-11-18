@@ -8,8 +8,12 @@ import 'theme/app_theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Memuat konfigurasi dari file .env
-  await dotenv.load(fileName: '.env');
+  // Memuat konfigurasi .env
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (_) {
+    // Aplikasi tetap dapat dibuka dalam mode demo jika .env belum tersedia.
+  }
 
   runApp(const LabIotLogbookApp());
 }
@@ -18,15 +22,18 @@ class LabIotLogbookApp extends StatefulWidget {
   const LabIotLogbookApp({super.key});
 
   @override
-  State<LabIotLogbookApp> createState() => _LabIotLogbookAppState();
+  State<LabIotLogbookApp> createState() =>
+      _LabIotLogbookAppState();
 }
 
-class _LabIotLogbookAppState extends State<LabIotLogbookApp> {
+class _LabIotLogbookAppState
+    extends State<LabIotLogbookApp> {
   ThemeMode _themeMode = ThemeMode.light;
 
   void _toggleTheme(bool isDark) {
     setState(() {
-      _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
+      _themeMode =
+          isDark ? ThemeMode.dark : ThemeMode.light;
     });
   }
 
@@ -34,7 +41,7 @@ class _LabIotLogbookAppState extends State<LabIotLogbookApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'LabIotLogbook',
+      title: 'LabIoTLogbook',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _themeMode,

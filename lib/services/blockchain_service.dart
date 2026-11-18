@@ -1,10 +1,9 @@
+
 import 'dart:async';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
-import 'package:web3dart/web3dart.dart';
-import 'package:wallet/wallet.dart';
+import 'package:reown_appkit/reown_appkit.dart';
 
 import '../config/blockchain_config.dart';
 import '../models/loan_model.dart';
@@ -13,12 +12,13 @@ class BlockchainService {
   Web3Client? _client;
   DeployedContract? _contract;
 
-  EthPrivateKey? _credentials;
+  IReownAppKitModal? _appKitModal;
   String? _walletAddress;
 
   String? get walletAddress => _walletAddress;
 
-  bool get isWalletConnected => _credentials != null;
+  bool get isWalletConnected =>
+      _walletAddress != null && _appKitModal?.isConnected == true;
 
   // ============================================================
   // INITIALIZE
@@ -58,7 +58,7 @@ class BlockchainService {
       _client = client;
       _contract = contract;
     } catch (e) {
-      client.dispose();
+
       rethrow;
     }
   }
@@ -78,13 +78,16 @@ class BlockchainService {
       15,
     ];
 
-    for (int attempt = 0; attempt <= retryDelays.length; attempt++) {
+    for (int attempt = 0;
+        attempt <= retryDelays.length;
+        attempt++) {
       try {
         return await request();
       } catch (e) {
         final message = e.toString().toLowerCase();
 
-        final isRateLimit = message.contains('429') ||
+        final isRateLimit =
+            message.contains('429') ||
             message.contains('compute units') ||
             message.contains('too many requests') ||
             message.contains('rate limit');
@@ -106,105 +109,104 @@ class BlockchainService {
   // WALLET
   // ============================================================
 
-  Future<String> connectWallet(String privateKey) async {
-    final key = privateKey.trim();
-
-    if (key.isEmpty) {
-      throw ArgumentError('Private key tidak boleh kosong.');
+  Future<void> connectWallet(String address, IReownAppKitModal appKitModal) async {
+    final normalized = address.trim();
+    if (!RegExp(r'^0x[a-fA-F0-9]{40}$').hasMatch(normalized)) {
+      throw ArgumentError('Alamat wallet tidak valid.');
     }
-
-    final credentials = EthPrivateKey.fromHex(key);
-
-    _credentials = credentials;
-
-    _walletAddress = bytesToHex(
-      credentials.address.value,
-      include0x: true,
-    );
-
-    return _walletAddress!;
+    _walletAddress = normalized;
+    _appKitModal = appKitModal;
   }
 
   void disconnectWallet() {
-    _credentials = null;
     _walletAddress = null;
+    _appKitModal = null;
   }
 
-  // MENGAMBIL SALDO WALLET
   Future<EtherAmount> getWalletBalance() async {
     await initialize();
-
-    if (_credentials == null) {
+    if (!isWalletConnected) {
       throw StateError('Wallet belum terhubung.');
     }
-
-    return _withRpcRetry(
-      () => _client!.getBalance(
-        _credentials!.address,
-      ),
-    );
+    final address = EthereumAddress.fromHex(_walletAddress!);
+    return _withRpcRetry(() => _client!.getBalance(address));
   }
-  // ============================================================
-  // SEND TRANSACTION
-  // ============================================================
+
   Future<String> _sendContractTransaction(
     String functionName,
     List<dynamic> params,
   ) async {
     await initialize();
-
-    if (_credentials == null) {
-      throw StateError('Wallet belum terhubung.');
+    final modal = _appKitModal;
+    if (!isWalletConnected || modal == null) {
+      throw StateError('Hubungkan wallet terlebih dahulu.');
     }
 
-    final function = _contract!.function(functionName);
+    final session = modal.session;
+    if (session == null) {
+      throw StateError('Sesi wallet Reown tidak ditemukan. Hubungkan ulang wallet.');
+    }
 
+    final chainId = 'eip155:${BlockchainConfig.chainId}';
+    final function = _contract!.function(functionName);
     final transaction = Transaction(
+      from: EthereumAddress.fromHex(_walletAddress!),
       to: _contract!.address,
       data: function.encodeCall(params),
       maxGas: 600000,
     );
 
-    final hash = await _client!.sendTransaction(
-      _credentials!,
-      transaction,
-      chainId: BlockchainConfig.chainId,
+    // Penandatanganan dan pengiriman transaksi dilakukan oleh wallet melalui Reown.
+    final dynamic response = await modal.requestWriteContract(
+      topic: session.topic,
+      chainId: chainId,
+      deployedContract: _contract!,
+      functionName: functionName,
+      transaction: transaction,
+      parameters: params,
     );
 
-    // Tunggu konfirmasi transaksi.
-    const maxAttempts = 60;
+    final hash = _extractTransactionHash(response);
+    if (hash == null) {
+      throw StateError('Wallet tidak mengembalikan transaction hash: $response');
+    }
 
-    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+    const maxAttempts = 90;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
       final receipt = await _withRpcRetry(
         () => _client!.getTransactionReceipt(hash),
       );
-
       if (receipt != null) {
-        if (receipt.status == true) {
-          return hash;
-        }
-
+        if (receipt.status == true) return hash;
         if (receipt.status == false) {
-          throw StateError(
-            'Transaksi gagal dieksekusi oleh smart contract. '
-            'Hash: $hash',
-          );
+          throw StateError('Transaksi gagal dieksekusi smart contract. Hash: $hash');
         }
-
-        throw StateError(
-          'Status receipt transaksi tidak tersedia. Hash: $hash',
-        );
       }
-
-      await Future.delayed(
-        const Duration(seconds: 2),
-      );
+      await Future.delayed(const Duration(seconds: 2));
     }
 
     throw TimeoutException(
-      'Transaksi masih menunggu konfirmasi. '
-      'Periksa Etherscan. Hash: $hash',
+      'Transaksi belum terkonfirmasi. Periksa Etherscan. Hash: $hash',
     );
+  }
+
+  String? _extractTransactionHash(dynamic response) {
+    if (response == null) return null;
+    if (response is String) {
+      final match = RegExp(r'0x[a-fA-F0-9]{64}').firstMatch(response);
+      return match?.group(0);
+    }
+    if (response is Map) {
+      for (final key in ['transactionHash', 'txHash', 'hash']) {
+        final value = response[key];
+        if (value != null) {
+          final match = RegExp(r'0x[a-fA-F0-9]{64}').firstMatch(value.toString());
+          if (match != null) return match.group(0);
+        }
+      }
+    }
+    final match = RegExp(r'0x[a-fA-F0-9]{64}').firstMatch(response.toString());
+    return match?.group(0);
   }
 
   // ============================================================
@@ -215,7 +217,8 @@ class BlockchainService {
     String namaAlat,
     String namaPeminjam,
   ) async {
-    if (namaAlat.trim().isEmpty || namaPeminjam.trim().isEmpty) {
+    if (namaAlat.trim().isEmpty ||
+        namaPeminjam.trim().isEmpty) {
       throw ArgumentError(
         'Nama alat dan nama peminjam wajib diisi.',
       );
@@ -229,6 +232,7 @@ class BlockchainService {
       ],
     );
   }
+
   // ============================================================
   // KEMBALIKAN ALAT
   // ============================================================
@@ -240,12 +244,12 @@ class BlockchainService {
 
     return _sendContractTransaction(
       'kembalikanAlat',
-      [BigInt.from(id)],
+      [
+        BigInt.from(id),
+      ],
     );
   }
-  // ============================================================
-  // BATALKAN PEMINJAMAN
-  // ============================================================
+
   Future<String> batalkanPeminjaman(int id) async {
     if (id < 0) {
       throw ArgumentError('ID peminjaman tidak valid.');
@@ -253,12 +257,12 @@ class BlockchainService {
 
     return _sendContractTransaction(
       'batalkanPeminjaman',
-      [BigInt.from(id)],
+      [
+        BigInt.from(id),
+      ],
     );
   }
-  // ============================================================
-  // READ: JUMLAH LOG
-  // ============================================================
+
   Future<int> getJumlahLog() async {
     await initialize();
 
@@ -272,6 +276,7 @@ class BlockchainService {
 
     return (result.first as BigInt).toInt();
   }
+
   // ============================================================
   // READ: SATU LOG
   // ============================================================
@@ -307,9 +312,7 @@ class BlockchainService {
       ),
     );
   }
-  // ============================================================
-  // READ: SELURUH LOG
-  // ============================================================
+
   Future<List<LoanModel>> getAllLogs() async {
     await initialize();
 
@@ -332,11 +335,14 @@ class BlockchainService {
 
     return logs.reversed.toList();
   }
-  // ============================================================
-// WATCH SMART CONTRACT EVENT
-// ============================================================
 
-  Future<Stream<FilterEvent>> watchEvent(String eventName) async {
+  // ============================================================
+  // WATCH SMART CONTRACT EVENT
+  // ============================================================
+
+  Future<Stream<FilterEvent>> watchEvent(
+    String eventName,
+  ) async {
     await initialize();
 
     final event = _contract!.event(eventName);
@@ -356,7 +362,6 @@ class BlockchainService {
   Future<List<String>> getActivityHistory() async {
     await initialize();
 
-    // Ambil seluruh data langsung dari smart contract.
     final loans = await getAllLogs();
 
     final List<_ActivityItem> activities = [];
@@ -365,7 +370,8 @@ class BlockchainService {
       // Aktivitas peminjaman.
       activities.add(
         _ActivityItem(
-          message: '${loan.namaPeminjam} meminjam ${loan.namaAlat}',
+          message:
+              '${loan.namaPeminjam} meminjam ${loan.namaAlat}',
           timestamp: loan.waktuPinjam,
           id: loan.id,
           order: 0,
@@ -376,7 +382,8 @@ class BlockchainService {
       if (loan.statusKembali && loan.waktuKembali > 0) {
         activities.add(
           _ActivityItem(
-            message: '${loan.namaPeminjam} mengembalikan ${loan.namaAlat}',
+            message:
+                '${loan.namaPeminjam} mengembalikan ${loan.namaAlat}',
             timestamp: loan.waktuKembali,
             id: loan.id,
             order: 1,
@@ -388,10 +395,11 @@ class BlockchainService {
       if (loan.dibatalkan) {
         activities.add(
           _ActivityItem(
-            message: '${loan.namaPeminjam} membatalkan peminjaman '
+            message:
+                '${loan.namaPeminjam} membatalkan peminjaman '
                 '${loan.namaAlat}',
-            // Smart contract lama tidak menyimpan waktu pembatalan.
-            // Waktu pinjam hanya digunakan sebagai perkiraan urutan.
+            // Kontrak lama tidak menyimpan waktu pembatalan.
+            // Waktu pinjam dipakai sebagai perkiraan urutan.
             timestamp: loan.waktuPinjam,
             id: loan.id,
             order: 1,
@@ -402,7 +410,8 @@ class BlockchainService {
 
     // Urutkan aktivitas dari terbaru ke terlama.
     activities.sort((a, b) {
-      final timeCompare = b.timestamp.compareTo(a.timestamp);
+      final timeCompare =
+          b.timestamp.compareTo(a.timestamp);
 
       if (timeCompare != 0) {
         return timeCompare;
@@ -417,7 +426,9 @@ class BlockchainService {
       return b.order.compareTo(a.order);
     });
 
-    return activities.map((activity) => activity.message).toList();
+    return activities
+        .map((activity) => activity.message)
+        .toList();
   }
 
   // ============================================================
