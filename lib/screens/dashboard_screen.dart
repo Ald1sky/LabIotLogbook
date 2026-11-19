@@ -52,9 +52,7 @@ class DashboardScreen extends StatelessWidget {
         children: [
           Text(
             'Laboratory Equipment',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.hintColor,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
           ),
           const SizedBox(height: 4),
           Text(
@@ -64,8 +62,7 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          if (isLoading)
-            const LinearProgressIndicator(),
+          if (isLoading) const LinearProgressIndicator(),
           if (loadError != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -137,17 +134,19 @@ class DashboardScreen extends StatelessWidget {
               child: Center(child: Text('Belum ada data peminjaman.')),
             )
           else
-            ...loans.take(3).map(
-              (loan) => LoanCard(
-                loan: loan,
-                onReturn: loan.sedangDipinjam
-                    ? () => onReturn(loan.id)
-                    : null,
-                onCancel: loan.sedangDipinjam
-                    ? () => onCancel(loan.id)
-                    : null,
-              ),
-            ),
+            ...loans
+                .take(3)
+                .map(
+                  (loan) => LoanCard(
+                    loan: loan,
+                    onReturn: loan.sedangDipinjam
+                        ? () => onReturn(loan.id)
+                        : null,
+                    onCancel: loan.sedangDipinjam
+                        ? () => onCancel(loan.id)
+                        : null,
+                  ),
+                ),
           const SizedBox(height: 12),
           SizedBox(
             height: 50,
@@ -155,23 +154,6 @@ class DashboardScreen extends StatelessWidget {
               onPressed: onBorrow,
               icon: const Icon(Icons.add),
               label: const Text('Pinjam Alat'),
-            ),
-          ),
-          const SizedBox(height: 22),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: theme.dividerColor),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.circle, color: Colors.orange, size: 10),
-                SizedBox(width: 10),
-                Expanded(child: Text('Ethereum Sepolia')),
-                Text('Demo Mode', style: TextStyle(fontSize: 11)),
-              ],
             ),
           ),
         ],

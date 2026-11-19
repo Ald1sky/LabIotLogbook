@@ -151,16 +151,7 @@ class _LoanScreenState extends State<LoanScreen> {
 
                       return LoanCard(
                         loan: loan,
-                        onReturn:
-                            widget.isDemoMode &&
-                                    loan.sedangDipinjam
-                                ? () => widget.onReturn(loan.id)
-                                : null,
-                        onCancel:
-                            widget.isDemoMode &&
-                                    loan.sedangDipinjam
-                                ? () => widget.onCancel(loan.id)
-                                : null,
+                        
                       );
                     },
                   ),

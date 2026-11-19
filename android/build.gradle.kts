@@ -6,7 +6,6 @@ import org.gradle.api.tasks.Delete
 import org.gradle.api.file.Directory
 
 import com.android.build.gradle.LibraryExtension
-57a3c58 (Update fitur)
 
 allprojects {
     repositories {

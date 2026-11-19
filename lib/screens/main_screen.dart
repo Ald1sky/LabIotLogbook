@@ -1,4 +1,4 @@
-
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -522,53 +522,99 @@ class _MainScreenState extends State<MainScreen> {
         loan.walletPeminjam.toLowerCase();
   }
 
-  Future<void> _afterTransaction({
-    required String action,
-    required String hash,
-  }) async {
-    if (!mounted) return;
+Future<void> _afterTransaction({
+  required String action,
+  required String hash,
+}) async {
+  if (!mounted) return;
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+  final etherscanUrl = Uri.parse(
+    'https://sepolia.etherscan.io/tx/$hash',
+  );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        duration: const Duration(seconds: 20),
-        behavior: SnackBarBehavior.floating,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$action berhasil dikonfirmasi!',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      duration: const Duration(seconds: 30),
+      behavior: SnackBarBehavior.floating,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$action berhasil dikonfirmasi!',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Transaction Hash:',
-              style: TextStyle(fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Transaction Hash:',
+            style: TextStyle(fontSize: 12),
+          ),
+          const SizedBox(height: 4),
+          SelectableText(
+            hash,
+            style: const TextStyle(
+              fontSize: 11,
+              fontFamily: 'monospace',
             ),
-            const SizedBox(height: 4),
-            SelectableText(
-              hash,
-              style: const TextStyle(
-                fontSize: 11,
-                fontFamily: 'monospace',
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(
+                      ClipboardData(text: hash),
+                    );
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Hash berhasil disalin.'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.copy, size: 16),
+                  label: const Text('Salin Hash'),
+                ),
               ),
-            ),
-          ],
-        ),
-        action: SnackBarAction(
-          label: 'SALIN HASH',
-          onPressed: () {
-            Clipboard.setData(ClipboardData(text: hash));
-          },
-        ),
-      ),
-    );
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final success = await launchUrl(
+                      etherscanUrl,
+                      mode: LaunchMode.externalApplication,
+                    );
 
-    unawaited(_refreshBlockchainData());
-    unawaited(_loadWalletBalance());
-  }
+                    if (!success && mounted) {
+                      _showMessage(
+                        'Tidak dapat membuka Etherscan.',
+                      );
+                    }
+                  },
+                  icon: const Icon(
+                    Icons.open_in_new,
+                    size: 16,
+                  ),
+                  label: const Text('Etherscan'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+
+  // Perbarui data blockchain.
+  unawaited(_refreshBlockchainData());
+  unawaited(_loadWalletBalance());
+}
 
   bool _canStartTransaction() {
     if (_transactionInProgress) {
